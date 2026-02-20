@@ -235,6 +235,7 @@ import { useRoute, useRouter } from 'vue-router'
 import VideoPlayer from '@/components/common/VideoPlayer.vue'
 import MediaCard from '@/components/common/MediaCard.vue'
 import { tmdbService, imageService, utilsService } from '@/services/tmdb'
+import { localStorageService } from '@/services/localStorage'
 
 export default {
   name: 'MovieDetailView',
@@ -296,23 +297,27 @@ export default {
     }
 
     function toggleFavorite() {
-      isFavorite.value = !isFavorite.value
-      // TODO: Implement favorite storage (localStorage, API, etc.)
+      if (!movie.value) return
+      const item = { ...movie.value, media_type: 'movie' }
+      localStorageService.toggleFavorite(item)
+      isFavorite.value = localStorageService.isFavorite(movie.value.id, 'movie')
     }
 
     function toggleWatchlist() {
-      isInWatchlist.value = !isInWatchlist.value
-      // TODO: Implement watchlist storage (localStorage, API, etc.)
+      if (!movie.value) return
+      const item = { ...movie.value, media_type: 'movie' }
+      localStorageService.toggleWatchlist(item)
+      isInWatchlist.value = localStorageService.isInWatchlist(movie.value.id, 'movie')
     }
 
     function checkFavoriteStatus() {
-      // TODO: Check if movie is in favorites
-      isFavorite.value = false
+      if (!movie.value) return
+      isFavorite.value = localStorageService.isFavorite(movie.value.id, 'movie')
     }
 
     function checkWatchlistStatus() {
-      // TODO: Check if movie is in watchlist
-      isInWatchlist.value = false
+      if (!movie.value) return
+      isInWatchlist.value = localStorageService.isInWatchlist(movie.value.id, 'movie')
     }
 
     function goToMovie(movieId) {

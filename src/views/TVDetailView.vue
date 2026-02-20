@@ -298,6 +298,7 @@ import { useRoute, useRouter } from 'vue-router'
 import VideoPlayer from '@/components/common/VideoPlayer.vue'
 import MediaCard from '@/components/common/MediaCard.vue'
 import { tmdbService, imageService, utilsService } from '@/services/tmdb'
+import { localStorageService } from '@/services/localStorage'
 
 export default {
   name: 'TVDetailView',
@@ -395,19 +396,27 @@ export default {
     }
 
     function toggleFavorite() {
-      isFavorite.value = !isFavorite.value
+      if (!tvShow.value) return
+      const item = { ...tvShow.value, media_type: 'tv' }
+      localStorageService.toggleFavorite(item)
+      isFavorite.value = localStorageService.isFavorite(tvShow.value.id, 'tv')
     }
 
     function toggleWatchlist() {
-      isInWatchlist.value = !isInWatchlist.value
+      if (!tvShow.value) return
+      const item = { ...tvShow.value, media_type: 'tv' }
+      localStorageService.toggleWatchlist(item)
+      isInWatchlist.value = localStorageService.isInWatchlist(tvShow.value.id, 'tv')
     }
 
     function checkFavoriteStatus() {
-      isFavorite.value = false
+      if (!tvShow.value) return
+      isFavorite.value = localStorageService.isFavorite(tvShow.value.id, 'tv')
     }
 
     function checkWatchlistStatus() {
-      isInWatchlist.value = false
+      if (!tvShow.value) return
+      isInWatchlist.value = localStorageService.isInWatchlist(tvShow.value.id, 'tv')
     }
 
     function goToTV(tvId) {
