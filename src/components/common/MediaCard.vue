@@ -6,14 +6,14 @@
   >
     <div class="poster-frame">
       <img
-        v-if="posterUrl"
+        v-if="posterUrl && !imgError"
         :src="posterUrl"
         :alt="title"
         class="poster-img"
         loading="lazy"
         @error="imgError = true"
       />
-      <div v-if="!posterUrl || imgError" class="poster-fallback">
+      <div v-else class="poster-fallback">
         <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
           <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
           <circle cx="8.5" cy="8.5" r="1.5"/>
@@ -21,7 +21,14 @@
         </svg>
       </div>
 
-      <div v-if="item.vote_average" class="rating-badge">
+      <div class="poster-overlay">
+        <div class="play-circle">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
+        </div>
+      </div>
+
+      <div v-if="item.vote_average" class="rating-pill">
+        <svg width="10" height="10" viewBox="0 0 24 24" fill="var(--amber)"><path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"/></svg>
         {{ formatRating(item.vote_average) }}
       </div>
     </div>
@@ -67,9 +74,7 @@ export default {
 
     function formatRating(r) { return utilsService.formatVoteAverage(r) }
 
-    return {
-      title, subtitle, posterUrl, imgError, handleClick, formatRating
-    }
+    return { title, subtitle, posterUrl, imgError, handleClick, formatRating }
   }
 }
 </script>
@@ -80,35 +85,65 @@ export default {
   cursor: pointer;
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 10px;
   width: 100%;
 }
 
 .media-card--loading {
   pointer-events: none;
-  opacity: 0.5;
+  opacity: 0.4;
 }
 
 .poster-frame {
   position: relative;
   aspect-ratio: 2 / 3;
   background: var(--bg-secondary);
-  border-radius: var(--border-radius-md);
+  border-radius: var(--border-radius-lg);
   overflow: hidden;
-  border: 1px solid var(--border-color);
 }
 
 .poster-img {
   width: 100%;
   height: 100%;
   object-fit: cover;
-  display: block;
-  transition: transform 0.6s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.4s ease;
+  transition: transform 0.5s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .media-card:hover .poster-img {
-  transform: scale(1.05);
-  opacity: 0.8;
+  transform: scale(1.06);
+}
+
+.poster-overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0);
+  transition: background var(--transition-normal);
+  opacity: 0;
+}
+
+.media-card:hover .poster-overlay {
+  background: rgba(0, 0, 0, 0.35);
+  opacity: 1;
+}
+
+.play-circle {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.9);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--bg-primary);
+  transform: scale(0.8);
+  transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.media-card:hover .play-circle {
+  transform: scale(1);
 }
 
 .poster-fallback {
@@ -117,58 +152,59 @@ export default {
   display: flex;
   align-items: center;
   justify-content: center;
-  color: var(--text-secondary);
+  color: var(--text-muted);
 }
 
-.rating-badge {
+.rating-pill {
   position: absolute;
   top: 8px;
-  right: 8px;
-  background: rgba(0, 0, 0, 0.8);
-  backdrop-filter: blur(4px);
-  -webkit-backdrop-filter: blur(4px);
-  padding: 4px 8px;
-  border-radius: var(--border-radius-sm);
-  font-size: 0.75rem;
+  left: 8px;
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  background: rgba(0, 0, 0, 0.7);
+  backdrop-filter: blur(8px);
+  padding: 3px 8px;
+  border-radius: var(--border-radius-full);
+  font-size: 0.72rem;
   font-weight: 700;
   color: var(--text-primary);
-  letter-spacing: 0.02em;
-  border: 1px solid var(--border-color);
 }
 
 .card-meta {
   display: flex;
   flex-direction: column;
   gap: 2px;
+  padding: 0 2px;
 }
 
 .card-title {
-  font-size: 0.95rem;
+  font-size: 0.88rem;
   font-weight: 600;
   color: var(--text-primary);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  line-height: 1.2;
+  line-height: 1.3;
 }
 
 .card-year {
-  font-size: 0.85rem;
+  font-size: 0.78rem;
   color: var(--text-secondary);
   font-weight: 500;
 }
 
 @media (max-width: 480px) {
   .poster-frame {
-    border-radius: var(--border-radius-sm);
+    border-radius: var(--border-radius-md);
   }
 
   .card-title {
-    font-size: 0.85rem;
+    font-size: 0.8rem;
   }
 
   .card-year {
-    font-size: 0.75rem;
+    font-size: 0.72rem;
   }
 }
 </style>

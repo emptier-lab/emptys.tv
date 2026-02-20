@@ -1,146 +1,141 @@
 <!doctype html>
 <html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="./vite.svg" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>empty.tv — Stream Movies & TV Shows</title>
-    <meta
-      name="description"
-      content="Watch movies and TV shows from multiple sources. A modern, minimal streaming interface."
-    />
-    <meta
-      name="keywords"
-      content="movies, tv shows, streaming, watch online, free movies, empty.tv"
-    />
 
-    <!-- Open Graph -->
-    <meta property="og:type" content="website" />
-    <meta property="og:url" content="https://emptier-lab.github.io/empty.tv/" />
-    <meta property="og:title" content="empty.tv — Stream Movies & TV Shows" />
-    <meta
-      property="og:description"
-      content="Watch movies and TV shows from multiple sources. A modern, minimal streaming interface."
-    />
-    <meta property="og:image" content="./og-image.png" />
+<head>
+  <meta charset="UTF-8" />
+  <link rel="icon" type="image/svg+xml" href="./vite.svg" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>empty.tv — Stream Movies & TV Shows</title>
+  <meta name="description"
+    content="Watch movies and TV shows from multiple sources. A modern, minimal streaming interface." />
+  <meta name="keywords" content="movies, tv shows, streaming, watch online, free movies, empty.tv" />
 
-    <!-- Twitter -->
-    <meta property="twitter:card" content="summary_large_image" />
-    <meta property="twitter:url" content="https://emptier-lab.github.io/empty.tv/" />
-    <meta property="twitter:title" content="empty.tv — Stream Movies & TV Shows" />
-    <meta
-      property="twitter:description"
-      content="Watch movies and TV shows from multiple sources. A modern, minimal streaming interface."
-    />
-    <meta property="twitter:image" content="./og-image.png" />
+  <!-- Open Graph -->
+  <meta property="og:type" content="website" />
+  <meta property="og:url" content="https://emptier-lab.github.io/empty.tv/" />
+  <meta property="og:title" content="empty.tv — Stream Movies & TV Shows" />
+  <meta property="og:description"
+    content="Watch movies and TV shows from multiple sources. A modern, minimal streaming interface." />
+  <meta property="og:image" content="./og-image.png" />
 
-    <!-- Theme Color — matches bg-primary -->
-    <meta name="theme-color" content="#000000" />
+  <!-- Twitter -->
+  <meta property="twitter:card" content="summary_large_image" />
+  <meta property="twitter:url" content="https://emptier-lab.github.io/empty.tv/" />
+  <meta property="twitter:title" content="empty.tv — Stream Movies & TV Shows" />
+  <meta property="twitter:description"
+    content="Watch movies and TV shows from multiple sources. A modern, minimal streaming interface." />
+  <meta property="twitter:image" content="./og-image.png" />
 
-    <!-- Preload critical resources -->
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link rel="preconnect" href="https://api.themoviedb.org" />
+  <!-- Theme Color — matches bg-primary -->
+  <meta name="theme-color" content="#000000" />
 
-    <!-- Favicon -->
-    <link rel="apple-touch-icon" sizes="180x180" href="./apple-touch-icon.png" />
-    <link rel="icon" type="image/png" sizes="32x32" href="./favicon-32x32.png" />
-    <link rel="icon" type="image/png" sizes="16x16" href="./favicon-16x16.png" />
-    <link rel="manifest" href="./site.webmanifest" />
+  <!-- Preload critical resources -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link rel="preconnect" href="https://api.themoviedb.org" />
 
-    <!-- Fonts -->
-    <link
-      href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap"
-      rel="stylesheet"
-    />
+  <!-- Favicon -->
+  <link rel="apple-touch-icon" sizes="180x180" href="./apple-touch-icon.png" />
+  <link rel="icon" type="image/png" sizes="32x32" href="./favicon-32x32.png" />
+  <link rel="icon" type="image/png" sizes="16x16" href="./favicon-16x16.png" />
 
-    <style>
-      * {
-        margin: 0;
-        padding: 0;
-        box-sizing: border-box;
+  <!-- Fonts -->
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      background: #000;
+      color: #fff;
+      overflow-x: hidden;
+    }
+
+    #app {
+      min-height: 100vh;
+    }
+
+    .loading-container {
+      position: fixed;
+      inset: 0;
+      background: #000;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      z-index: 9999;
+      gap: 2rem;
+    }
+
+    .loading-mark {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 1.5rem;
+    }
+
+    .loading-logo {
+      font-size: 1.5rem;
+      font-weight: 700;
+      letter-spacing: -0.04em;
+      color: #fff;
+      opacity: 0.9;
+    }
+
+    .loading-bar {
+      width: 120px;
+      height: 1px;
+      background: #222;
+      position: relative;
+      overflow: hidden;
+      border-radius: 1px;
+    }
+
+    .loading-bar::after {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      height: 100%;
+      width: 40%;
+      background: #fff;
+      animation: slide 1.2s cubic-bezier(0.65, 0, 0.35, 1) infinite;
+    }
+
+    @keyframes slide {
+      0% {
+        transform: translateX(-100%);
       }
 
-      body {
-        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-        background: #000;
-        color: #fff;
-        overflow-x: hidden;
+      100% {
+        transform: translateX(350%);
       }
+    }
 
-      #app {
-        min-height: 100vh;
-      }
+    .vue-mounted .loading-container {
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.3s ease;
+    }
+  </style>
+</head>
 
-      .loading-container {
-        position: fixed;
-        inset: 0;
-        background: #000;
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        justify-content: center;
-        z-index: 9999;
-        gap: 2rem;
-      }
-
-      .loading-mark {
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        gap: 1.5rem;
-      }
-
-      .loading-logo {
-        font-size: 1.5rem;
-        font-weight: 700;
-        letter-spacing: -0.04em;
-        color: #fff;
-        opacity: 0.9;
-      }
-
-      .loading-bar {
-        width: 120px;
-        height: 1px;
-        background: #222;
-        position: relative;
-        overflow: hidden;
-        border-radius: 1px;
-      }
-
-      .loading-bar::after {
-        content: '';
-        position: absolute;
-        top: 0;
-        left: 0;
-        height: 100%;
-        width: 40%;
-        background: #fff;
-        animation: slide 1.2s cubic-bezier(0.65, 0, 0.35, 1) infinite;
-      }
-
-      @keyframes slide {
-        0% { transform: translateX(-100%); }
-        100% { transform: translateX(350%); }
-      }
-
-      .vue-mounted .loading-container {
-        opacity: 0;
-        pointer-events: none;
-        transition: opacity 0.3s ease;
-      }
-    </style>
-  </head>
-  <body>
-    <div id="app">
-      <div class="loading-container">
-        <div class="loading-mark">
-          <div class="loading-logo">empty.tv</div>
-          <div class="loading-bar"></div>
-        </div>
+<body>
+  <div id="app">
+    <div class="loading-container">
+      <div class="loading-mark">
+        <div class="loading-logo">empty.tv</div>
+        <div class="loading-bar"></div>
       </div>
     </div>
+  </div>
 
-    <script type="module" src="./src/main.js"></script>
-  </body>
+  <script type="module" src="./src/main.js"></script>
+</body>
+
 </html>

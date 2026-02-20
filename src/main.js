@@ -111,5 +111,5 @@ const app = createApp(App).use(router);
 
 app.mount("#app");
 
-// Ad blocker completely disabled to prevent redirect loops
-console.log("🛡️ AdBlocker disabled to prevent redirect loops");
+import { adBlocker } from "./services/adblocker";
+adBlocker.enable();

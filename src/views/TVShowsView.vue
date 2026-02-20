@@ -262,151 +262,114 @@ export default {
     })
 
     const hasMoreTVShows = computed(() => {
-      return currentPage.value < totalPages.value
+      return currentPage.value < totalPages.value && currentPage.value < 500
     })
+
+    async function fetchTVShows(page) {
+      const hasAdditionalFilters = selectedGenre.value || selectedYear.value ||
+          selectedNetwork.value || selectedAudience.value || selectedTheme.value ||
+          selectedKeywords.value.length > 0 || sortBy.value !== 'popularity.desc'
+
+      if (hasAdditionalFilters || selectedCategory.value === 'discover') {
+        const params = {
+          sort_by: sortBy.value,
+          page: page
+        }
+
+        if (selectedCategory.value !== 'discover') {
+          switch (selectedCategory.value) {
+            case 'top_rated':
+              params.vote_average_gte = 7
+              params.vote_count_gte = 100
+              if (sortBy.value === 'popularity.desc') params.sort_by = 'vote_average.desc'
+              break
+            case 'on_the_air':
+            case 'airing_today':
+              const now = new Date()
+              params.first_air_date_lte = now.toISOString().split('T')[0]
+              break
+            case 'underground':
+              params.vote_count_gte = 20
+              params.vote_count_lte = 300
+              if (sortBy.value === 'popularity.desc') params.sort_by = 'vote_average.desc'
+              break
+            case 'hidden_gems':
+              params.vote_count_gte = 50
+              params.vote_count_lte = 500
+              params.vote_average_gte = 7
+              if (sortBy.value === 'popularity.desc') params.sort_by = 'vote_average.desc'
+              break
+          }
+        }
+
+        if (selectedGenre.value) params.with_genres = selectedGenre.value
+        if (selectedYear.value) params.first_air_date_year = selectedYear.value
+        if (selectedNetwork.value) params.with_networks = selectedNetwork.value
+
+        if (sortBy.value === 'vote_count.asc' || selectedCategory.value === 'underground') {
+          params.vote_count_gte = 20
+          params.vote_count_lte = 500
+        }
+
+        if (selectedAudience.value) {
+          switch(selectedAudience.value) {
+            case 'kids': params.with_keywords = 9840; break
+            case 'family': params.with_keywords = 10751; break
+            case 'teens': params.with_keywords = 9714; break
+            case 'adult': params.with_keywords = 12623; break
+            case 'mature': params.include_adult = true; break
+          }
+        }
+
+        let allKeywords = []
+        if (selectedTheme.value) {
+          const themeKeywordMap = {
+            'superpowers': 9715, 'magic': 12554, 'dystopian': 4565, 'space': 9882,
+            'monsters': 12630, 'survival': 10683, 'supernatural': 9840
+          }
+          if (themeKeywordMap[selectedTheme.value]) allKeywords.push(themeKeywordMap[selectedTheme.value])
+        }
+
+        if (selectedKeywords.value.length > 0) {
+          const keywordMap = {
+            'indie': 11412, 'underrated': 209714, 'cult': 34012,
+            'dark': 10714, 'gritty': 8399, 'quirky': 263107
+          }
+          const keywordIds = selectedKeywords.value.map(k => keywordMap[k]).filter(Boolean)
+          allKeywords = allKeywords.concat(keywordIds)
+        }
+        
+        if (allKeywords.length > 0) {
+          if (params.with_keywords) {
+            params.with_keywords = `${params.with_keywords}|${allKeywords.join('|')}`
+          } else {
+            params.with_keywords = allKeywords.join('|')
+          }
+        }
+
+        params.include_adult = false
+        return await tmdbService.discoverTV(params)
+      } else {
+        switch (selectedCategory.value) {
+          case 'popular': return await tmdbService.getPopularTV(page)
+          case 'top_rated': return await tmdbService.getTopRatedTV(page)
+          case 'on_the_air': return await tmdbService.getOnTheAirTV(page)
+          case 'airing_today': return await tmdbService.getAiringTodayTV(page)
+          case 'underground': return await tmdbService.discoverTV({ sort_by: 'vote_average.desc', vote_count_gte: 20, vote_count_lte: 300, page })
+          case 'hidden_gems': return await tmdbService.discoverTV({ sort_by: 'vote_average.desc', vote_count_gte: 50, vote_count_lte: 500, vote_average_gte: 7, page })
+          default: return await tmdbService.getPopularTV(page)
+        }
+      }
+    }
 
     async function loadTVShows() {
       loading.value = true
       error.value = null
       currentPage.value = 1
+      tvShows.value = []
 
       try {
-        let response
-
-        if (selectedCategory.value === 'discover' || selectedGenre.value || selectedYear.value ||
-            selectedNetwork.value || selectedAudience.value || selectedTheme.value || selectedKeywords.value.length > 0) {
-          const params = {
-            sort_by: sortBy.value,
-            page: currentPage.value
-          }
-
-          if (selectedGenre.value) {
-            params.with_genres = selectedGenre.value
-          }
-
-          if (selectedYear.value) {
-            params.first_air_date_year = selectedYear.value
-          }
-
-          if (selectedNetwork.value) {
-            params.with_networks = selectedNetwork.value
-          }
-
-          // For underground content, adjust the vote count range
-          if (sortBy.value === 'vote_count.asc' || selectedCategory.value === 'underground') {
-            params.vote_count_gte = 20 // Minimum votes to ensure some quality
-            params.vote_count_lte = 500 // Maximum votes to ensure it's not mainstream
-          }
-
-          // Handle audience type filters
-          if (selectedAudience.value) {
-            switch(selectedAudience.value) {
-              case 'kids':
-                params.with_keywords = 9840 // Children's content
-                break
-              case 'family':
-                params.with_keywords = 10751 // Family content
-                break
-              case 'teens':
-                params.with_keywords = 9714 // Teen drama
-                break
-              case 'adult':
-                params.with_keywords = 12623 // Adult content
-                break
-              case 'mature':
-                params.include_adult = true
-                break
-            }
-          }
-
-          // Handle theme-based filtering
-          if (selectedTheme.value) {
-            // Map themes to keyword IDs from TMDB
-            const themeKeywordMap = {
-              'superpowers': 9715, // superhero keyword ID
-              'magic': 12554,
-              'dystopian': 4565,
-              'space': 9882,
-              'monsters': 12630,
-              'survival': 10683,
-              'supernatural': 9840
-            }
-
-            if (themeKeywordMap[selectedTheme.value]) {
-              params.with_keywords = params.with_keywords
-                ? `${params.with_keywords}|${themeKeywordMap[selectedTheme.value]}`
-                : themeKeywordMap[selectedTheme.value]
-            }
-          }
-
-          // Handle selected keywords
-          if (selectedKeywords.value.length > 0) {
-            // Convert our custom keywords to TMDB keyword IDs
-            const keywordMap = {
-              'indie': 11412,
-              'underrated': 209714,
-              'cult': 34012,
-              'dark': 10714,
-              'gritty': 8399,
-              'quirky': 263107
-            }
-
-            const keywordIds = selectedKeywords.value
-              .map(k => keywordMap[k])
-              .filter(id => id)
-              .join('|')
-
-            if (keywordIds) {
-              params.with_keywords = params.with_keywords
-                ? `${params.with_keywords}|${keywordIds}`
-                : keywordIds
-            }
-          }
-
-          // Apply NSFW filter - always disabled
-          params.include_adult = false
-
-          response = await tmdbService.discoverTV(params)
-        } else {
-          switch (selectedCategory.value) {
-            case 'popular':
-              response = await tmdbService.getPopularTV(currentPage.value)
-              break
-            case 'top_rated':
-              response = await tmdbService.getTopRatedTV(currentPage.value)
-              break
-            case 'on_the_air':
-              response = await tmdbService.getOnTheAirTV(currentPage.value)
-              break
-            case 'airing_today':
-              response = await tmdbService.getAiringTodayTV(currentPage.value)
-              break
-            case 'underground':
-              // For underground, use discover with special parameters
-              const undergroundParams = {
-                sort_by: 'vote_average.desc',
-                vote_count_gte: 20,
-                vote_count_lte: 300,
-                page: currentPage.value
-              }
-              response = await tmdbService.discoverTV(undergroundParams)
-              break
-            case 'hidden_gems':
-              // For hidden gems, use discover with different parameters
-              const hiddenGemsParams = {
-                sort_by: 'vote_average.desc',
-                vote_count_gte: 50,
-                vote_count_lte: 500,
-                vote_average_gte: 7,
-                page: currentPage.value
-              }
-              response = await tmdbService.discoverTV(hiddenGemsParams)
-              break
-            default:
-              response = await tmdbService.getPopularTV(currentPage.value)
-          }
-        }
-
+        const response = await fetchTVShows(currentPage.value)
         tvShows.value = response.results || []
         totalPages.value = response.total_pages || 0
       } catch (err) {
@@ -420,68 +383,21 @@ export default {
     async function loadMoreShows() {
       if (!hasMoreTVShows.value || loadingMore.value) return
 
-      // Prevent rapid successive calls
       const now = Date.now()
-      if (now - lastLoadTime.value < minLoadInterval) {
-        console.log('Load more throttled - too soon since last load')
-        return
-      }
+      if (now - lastLoadTime.value < minLoadInterval) return
       lastLoadTime.value = now
 
-      console.log('Loading more TV shows, page:', currentPage.value + 1)
       loadingMore.value = true
       currentPage.value += 1
 
       try {
-        let response
-
-        if (selectedCategory.value === 'discover' || selectedGenre.value || selectedYear.value ||
-            selectedNetwork.value || selectedAudience.value || selectedTheme.value || selectedKeywords.value.length > 0) {
-          const params = {
-            sort_by: sortBy.value,
-            page: currentPage.value
-          }
-
-          if (selectedGenre.value) {
-            params.with_genres = selectedGenre.value
-          }
-
-          if (selectedYear.value) {
-            params.first_air_date_year = selectedYear.value
-          }
-
-          if (selectedNetwork.value) {
-            params.with_networks = selectedNetwork.value
-          }
-
-          response = await tmdbService.discoverTV(params)
-        } else {
-          switch (selectedCategory.value) {
-            case 'popular':
-              response = await tmdbService.getPopularTV(currentPage.value)
-              break
-            case 'top_rated':
-              response = await tmdbService.getTopRatedTV(currentPage.value)
-              break
-            case 'on_the_air':
-              response = await tmdbService.getOnTheAirTV(currentPage.value)
-              break
-            case 'airing_today':
-              response = await tmdbService.getAiringTodayTV(currentPage.value)
-              break
-            default:
-              response = await tmdbService.getPopularTV(currentPage.value)
-          }
-        }
-
+        const response = await fetchTVShows(currentPage.value)
         tvShows.value.push(...(response.results || []))
+        totalPages.value = response.total_pages || totalPages.value
       } catch (err) {
         console.error('Failed to load more TV shows:', err)
       } finally {
         loadingMore.value = false
-        console.log('Finished loading more TV shows, now showing:', tvShows.value.length)
-
-        // Let LazyGrid's Intersection Observer handle load more detection
       }
     }
 
@@ -524,9 +440,9 @@ export default {
     function toggleKeyword(value) {
       const index = selectedKeywords.value.indexOf(value)
       if (index === -1) {
-        selectedKeywords.value.push(value)
+        selectedKeywords.value = [...selectedKeywords.value, value]
       } else {
-        selectedKeywords.value.splice(index, 1)
+        selectedKeywords.value = selectedKeywords.value.filter(k => k !== value)
       }
     }
 

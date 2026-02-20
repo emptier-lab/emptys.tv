@@ -3,7 +3,7 @@
 
 const TMDB_BASE_URL = "https://api.themoviedb.org/3";
 const TMDB_IMAGE_BASE_URL = "https://image.tmdb.org/t/p";
-const API_KEY = "ac014b130a8e6344c91dff4e68b18d47";
+const API_KEY = "6f51e2d3363d6ca808abe55a786c25ec";
 
 class TMDBService {
   constructor() {
@@ -103,6 +103,11 @@ class TMDBService {
     });
   }
 
+  // Get movie videos
+  async getMovieVideos(movieId) {
+    return this.makeRequest(`/movie/${movieId}/videos`);
+  }
+
   // Get TV show details
   async getTVDetails(
     tvId,
@@ -111,6 +116,11 @@ class TMDBService {
     return this.makeRequest(`/tv/${tvId}`, {
       append_to_response: appendToResponse,
     });
+  }
+
+  // Get TV videos
+  async getTVVideos(tvId) {
+    return this.makeRequest(`/tv/${tvId}/videos`);
   }
 
   // Get season details
@@ -270,6 +280,14 @@ class TMDBService {
 
   async getPersonExternalIds(personId) {
     return this.makeRequest(`/person/${personId}/external_ids`);
+  }
+
+  async getMovieImages(movieId) {
+    return this.makeRequest(`/movie/${movieId}/images`, { include_image_language: 'en,null' });
+  }
+
+  async getTVImages(tvId) {
+    return this.makeRequest(`/tv/${tvId}/images`, { include_image_language: 'en,null' });
   }
 
   // Get configuration

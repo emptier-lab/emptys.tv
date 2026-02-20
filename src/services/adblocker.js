@@ -3,9 +3,10 @@
 
 class EnhancedAdBlocker {
   constructor() {
-    this.enabled = true;
+    this.enabled = false;
     this.blockedCount = 0;
     this.popupCount = 0;
+    this.initialized = false;
     this.redirectCount = 0;
 
     // Enhanced filter lists for video streaming sites
@@ -183,21 +184,24 @@ class EnhancedAdBlocker {
       ".taboola",
     ];
 
-    this.initialize();
   }
 
   async initialize() {
-    if (!this.enabled) return;
+    if (!this.enabled || this.initialized) return;
+    this.initialized = true;
 
-    console.log("🛡️ Enhanced AdBlocker initializing...");
-
-    // Wait for DOM to be ready before aggressive blocking
-    if (document.readyState === "loading") {
-      document.addEventListener("DOMContentLoaded", () => {
+    const setup = () => {
+      if (document.body && document.getElementById('app')) {
         this.setupBlocking();
-      });
+      } else {
+        setTimeout(setup, 200);
+      }
+    };
+
+    if (document.readyState === "loading") {
+      document.addEventListener("DOMContentLoaded", setup);
     } else {
-      this.setupBlocking();
+      setup();
     }
   }
 
@@ -250,46 +254,26 @@ class EnhancedAdBlocker {
   }
 
   setupDOMBlocking() {
-    // Aggressive element removal
+    if (!document.body) return;
+
+    const appRoot = document.getElementById('app');
     const removeAds = () => {
       this.adSelectors.forEach((selector) => {
         try {
-          const elements = document.querySelectorAll(selector);
-          elements.forEach((el) => {
-            if (el && el.parentNode) {
+          document.querySelectorAll(selector).forEach((el) => {
+            if (el && el.parentNode && !appRoot?.contains(el)) {
               el.remove();
               this.blockedCount++;
             }
           });
-        } catch (e) {
-          // Ignore selector errors
-        }
-      });
-
-      // Remove elements with suspicious content
-      document.querySelectorAll("*").forEach((el) => {
-        if (el.textContent) {
-          const text = el.textContent.toLowerCase();
-          if (this.containsSuspiciousContent(text)) {
-            el.remove();
-            this.blockedCount++;
-          }
-        }
+        } catch (e) { }
       });
     };
 
-    // Run immediately and on DOM changes
     removeAds();
 
-    // Watch for new elements
-    const observer = new MutationObserver(() => {
-      removeAds();
-    });
-
-    observer.observe(document.body, {
-      childList: true,
-      subtree: true,
-    });
+    const observer = new MutationObserver(() => removeAds());
+    observer.observe(document.body, { childList: true, subtree: true });
   }
 
   setupPopupBlocking() {
@@ -429,35 +413,25 @@ class EnhancedAdBlocker {
   }
 
   startContinuousCleanup() {
-    // Less aggressive cleanup every 5 seconds (after initial load)
+    const appRoot = document.getElementById('app');
     setTimeout(() => {
       setInterval(() => {
         if (!this.enabled) return;
 
-        // Remove ad elements (but be more careful)
         this.adSelectors.forEach((selector) => {
           try {
             document.querySelectorAll(selector).forEach((el) => {
-              // Don't remove if it's part of the main app
-              if (!el.closest("#app") || el.closest(".video-player")) {
+              if (!appRoot?.contains(el)) {
                 el.remove();
                 this.blockedCount++;
               }
             });
-          } catch (e) {
-            // Ignore errors
-          }
+          } catch (e) { }
         });
 
-        // Close any popups that might have slipped through
-        if (window.name && window.name.includes("popup")) {
-          window.close();
-        }
-
-        // Block suspicious globals
         this.blockSuspiciousGlobals();
       }, 5000);
-    }, 3000); // Wait 3 seconds after page load
+    }, 3000);
   }
 
   blockSuspiciousGlobals() {
@@ -589,6 +563,7 @@ class EnhancedAdBlocker {
 
   enable() {
     this.enabled = true;
+    this.initialized = false;
     this.initialize();
   }
 
@@ -597,19 +572,7 @@ class EnhancedAdBlocker {
   }
 }
 
-// Create and export the enhanced ad blocker
 export const adBlocker = new EnhancedAdBlocker();
-
-// Auto-initialize when DOM is ready
-if (document.readyState === "loading") {
-  document.addEventListener("DOMContentLoaded", () => {
-    adBlocker.initialize();
-  });
-} else {
-  adBlocker.initialize();
-}
-
-// Global access for debugging
 window.adBlocker = adBlocker;
 
 export default adBlocker;

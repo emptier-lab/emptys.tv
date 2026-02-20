@@ -1,53 +1,62 @@
 <template>
   <div class="video-player">
     <div v-if="!showPlayer" class="player-placeholder" @click="initializePlayer">
-      <div class="play-overlay">
-        <button class="play-button">
-          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="play-icon">
-            <path fill-rule="evenodd" d="M2.25 12c0-5.385 4.365-9.75 9.75-9.75s9.75 4.365 9.75 9.75-4.365 9.75-9.75 9.75S2.25 17.385 2.25 12zm14.024-.983a1.125 1.125 0 010 1.966l-5.603 3.113A1.125 1.125 0 019 15.113V8.887c0-.857.921-1.4 1.671-.983l5.603 3.113z" clip-rule="evenodd" />
-          </svg>
-        </button>
-        <h3 class="play-text">Click to Watch</h3>
-        <p class="play-subtext">{{ getPlaySubtext() }}</p>
-      </div>
       <img
         v-if="backdropUrl"
         :src="backdropUrl"
         :alt="title"
         class="backdrop-image"
       />
-      <div v-else class="mesh-backdrop"></div>
+      <div v-else class="placeholder-bg"></div>
+      <div class="play-overlay">
+        <button class="play-button">
+          <svg width="28" height="28" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
+        </button>
+        <p class="play-label">{{ getPlaySubtext() }}</p>
+      </div>
     </div>
 
     <div v-if="showPlayer" class="player-container">
-      <div class="player-header">
-        <div class="player-info">
-          <h4 class="player-title">{{ title }}</h4>
-          <p class="player-meta">{{ getPlayerMeta() }}</p>
+      <div class="player-toolbar">
+        <div class="toolbar-left">
+          <h4 class="toolbar-title">{{ title }}</h4>
+          <span class="toolbar-meta">{{ getPlayerMeta() }}</span>
         </div>
 
-        <div class="player-controls">
-          <div class="source-selector">
-            <button
-              v-for="(source, index) in availableSources"
-              :key="source.name"
-              @click="selectedSource = index"
-              :class="['source-btn', { active: selectedSource === index }]"
+        <div class="toolbar-right">
+          <div class="source-pills-wrap">
+            <button v-if="canScrollLeft" class="scroll-arrow scroll-arrow--left" @click="scrollPills(-200)" aria-label="Scroll left">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+            </button>
+            <div
+              ref="pillsContainer"
+              class="source-pills"
+              @mousedown="startDrag"
+              @mousemove="onDrag"
+              @mouseup="endDrag"
+              @mouseleave="endDrag"
+              @scroll="updateScrollState"
             >
-              {{ source.name }}
+              <button
+                v-for="(source, index) in availableSources"
+                :key="source.name"
+                @click="!wasDragging && (selectedSource = index)"
+                :class="['source-pill', { active: selectedSource === index }]"
+              >
+                {{ source.name }}
+              </button>
+            </div>
+            <button v-if="canScrollRight" class="scroll-arrow scroll-arrow--right" @click="scrollPills(200)" aria-label="Scroll right">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
             </button>
           </div>
-
-          <button class="close-btn" @click="closePlayer">
-            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="close-icon">
-              <path d="M6.28 5.22a.75.75 0 00-1.06 1.06L8.94 10l-3.72 3.72a.75.75 0 101.06 1.06L10 11.06l3.72 3.72a.75.75 0 101.06-1.06L11.06 10l3.72-3.72a.75.75 0 00-1.06-1.06L10 8.94 6.28 5.22z" />
-            </svg>
+          <button class="close-btn" @click="closePlayer" aria-label="Close">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
           </button>
         </div>
       </div>
 
-      <div class="iframe-container">
-        <!-- Iframe without sandbox restrictions for specific sources and mobile devices -->
+      <div class="iframe-wrap">
         <iframe
           v-if="currentEmbedUrl && !needsSandbox"
           :src="currentEmbedUrl"
@@ -63,8 +72,6 @@
           class="video-iframe"
           @error="handleIframeError"
         />
-
-        <!-- Desktop iframe with sandbox for other sources -->
         <iframe
           v-if="currentEmbedUrl && needsSandbox"
           :src="currentEmbedUrl"
@@ -74,7 +81,7 @@
           allowfullscreen
           webkitallowfullscreen
           mozallowfullscreen
-          sandbox="allow-scripts allow-same-origin allow-popups allow-forms allow-presentation allow-top-navigation-by-user-activation"
+          sandbox="allow-scripts allow-same-origin allow-popups allow-forms allow-presentation"
           allow="autoplay; fullscreen; picture-in-picture"
           referrerpolicy="origin"
           loading="lazy"
@@ -82,37 +89,34 @@
           @error="handleIframeError"
         />
 
-        <div v-if="loading" class="overlay shimmer">
-          <div class="loader-circle"></div>
-          <p class="overlay-text">Establishing connection...</p>
+        <div v-if="loading" class="overlay">
+          <div class="spinner"></div>
+          <p class="overlay-label">Connecting…</p>
         </div>
 
-        <div v-if="error" class="overlay error-overlay">
-          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="var(--error-color)" class="error-icon">
-            <path fill-rule="evenodd" d="M12 2.25c-5.385 0-9.75 4.365-9.75 9.75s4.365 9.75 9.75 9.75 9.75-4.365 9.75-9.75S17.385 2.25 12 2.25zm-1.72 6.97a.75.75 0 10-1.06 1.06L10.94 12l-1.72 1.72a.75.75 0 101.06 1.06L12 13.06l1.72 1.72a.75.75 0 101.06-1.06L13.06 12l1.72-1.72a.75.75 0 10-1.06-1.06L12 10.94l-1.72-1.72z" clip-rule="evenodd" />
-          </svg>
-          <h3>Failed to load video</h3>
+        <div v-if="error" class="overlay overlay--error">
+          <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="var(--rose)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>
+          <h3>Failed to load</h3>
           <p>{{ error }}</p>
           <button @click="retryLoad" class="retry-btn">Try Another Source</button>
         </div>
       </div>
 
-      <div v-if="showSourceInfo" class="source-info">
-        <div class="source-alert">
-          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="info-icon">
-            <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a.75.75 0 000 1.5h.253a.25.25 0 01.244.304l-.459 2.066A1.75 1.75 0 0010.747 15H11a.75.75 0 000-1.5h-.253a.25.25 0 01-.244-.304l.459-2.066A1.75 1.75 0 009.253 9H9z" clip-rule="evenodd" />
-          </svg>
-          <span class="info-text">Playing from <strong>{{ currentSource?.name }}</strong>. Switch sources above if it hangs.</span>
+      <transition name="toast">
+        <div v-if="showSourceInfo" class="source-toast">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
+          Playing from <strong>{{ currentSource?.name }}</strong>
         </div>
-      </div>
+      </transition>
     </div>
   </div>
 </template>
 
 <script>
-import { ref, computed, watch, onMounted } from 'vue'
+import { ref, computed, watch, onMounted, onUnmounted, nextTick } from 'vue'
 import { videoEmbedService } from '@/services/videoEmbed'
 import { imageService } from '@/services/tmdb'
+import { useRouter } from 'vue-router'
 
 export default {
   name: 'VideoPlayer',
@@ -127,32 +131,53 @@ export default {
   },
   emits: ['player-opened', 'player-closed', 'source-changed'],
   setup(props, { emit }) {
+    const router = useRouter()
     const showPlayer = ref(false)
     const loading = ref(false)
     const error = ref(null)
     const selectedSource = ref(0)
     const availableSources = ref([])
     const showSourceInfo = ref(true)
+    const pillsContainer = ref(null)
+    const canScrollLeft = ref(false)
+    const canScrollRight = ref(false)
+    const isDragging = ref(false)
+    const wasDragging = ref(false)
+    let dragStartX = 0
+    let dragScrollLeft = 0
+    let navigationGuard = null
+    const loading = ref(false)
+    const error = ref(null)
+    const selectedSource = ref(0)
+    const availableSources = ref([])
+    const showSourceInfo = ref(true)
+    const pillsContainer = ref(null)
+    const canScrollLeft = ref(false)
+    const canScrollRight = ref(false)
+    const isDragging = ref(false)
+    const wasDragging = ref(false)
+    let dragStartX = 0
+    let dragScrollLeft = 0
 
-    const isMobileDevice = computed(() => {
-      return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)
-    })
+    const isMobileDevice = computed(() =>
+      /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)
+    )
 
-    const backdropUrl = computed(() => {
-      return props.backdropPath ? imageService.getBackdropUrl(props.backdropPath, 'original') : null
-    })
+    const backdropUrl = computed(() =>
+      props.backdropPath ? imageService.getBackdropUrl(props.backdropPath, 'original') : null
+    )
 
     const currentSource = computed(() => availableSources.value[selectedSource.value] || null)
     const currentEmbedUrl = computed(() => currentSource.value?.url || null)
 
     const needsSandbox = computed(() => {
       const name = currentSource.value?.name?.toLowerCase() || ''
-      const unsandboxed = ['vidlink', 'nontongo', 'autoembed', 'embed.su', 'moviesapi']
+      const unsandboxed = ['vidlink', 'nontongo', 'autoembed', 'embed.su', 'moviesapi', 'youtube']
       return !(unsandboxed.some(s => name.includes(s)) || isMobileDevice.value)
     })
 
     function getPlaySubtext() {
-      return props.mediaType === 'tv' ? `Season ${props.season} ∙ Episode ${props.episode}` : 'Full Movie (1080p, 4K)'
+      return props.mediaType === 'tv' ? `S${props.season} · E${props.episode}` : 'Watch Now'
     }
 
     function getPlayerMeta() {
@@ -165,15 +190,33 @@ export default {
       error.value = null
       loadEmbedSources()
       emit('player-opened')
+      installNavigationGuard()
     }
 
     function closePlayer() {
       showPlayer.value = false
       selectedSource.value = 0
       emit('player-closed')
+      removeNavigationGuard()
     }
 
-    function loadEmbedSources() {
+    function installNavigationGuard() {
+      removeNavigationGuard()
+      navigationGuard = router.beforeEach((to, from) => {
+        if (showPlayer.value && to.path !== from.path) {
+          return false
+        }
+      })
+    }
+
+    function removeNavigationGuard() {
+      if (navigationGuard) {
+        navigationGuard()
+        navigationGuard = null
+      }
+    }
+
+    async function loadEmbedSources() {
       try {
         if (props.mediaType === 'movie') {
           availableSources.value = videoEmbedService.getMovieEmbeds(props.tmdbId, isMobileDevice.value)
@@ -182,24 +225,22 @@ export default {
         }
 
         if (availableSources.value.length === 0) {
-          error.value = 'No streaming sources available in your region.'
+          error.value = 'No sources available.'
         } else {
           loading.value = false
-          // Auto hide info box after delay
-          setTimeout(() => showSourceInfo.value = false, 6000)
+          setTimeout(() => showSourceInfo.value = false, 5000)
         }
       } catch (err) {
-        error.value = 'Failed to connect to provider network.'
+        error.value = 'Failed to connect.'
         loading.value = false
       }
     }
 
     function handleIframeError() {
-      // Try next source automatically
       if (selectedSource.value < availableSources.value.length - 1) {
         selectedSource.value++
       } else {
-        error.value = 'Stream servers unresponsive.'
+        error.value = 'All sources unavailable.'
       }
     }
 
@@ -207,7 +248,42 @@ export default {
       handleIframeError()
       error.value = null
       loading.value = true
-      setTimeout(() => loading.value = false, 1000)
+      setTimeout(() => loading.value = false, 800)
+    }
+
+    function updateScrollState() {
+      const el = pillsContainer.value
+      if (!el) return
+      canScrollLeft.value = el.scrollLeft > 2
+      canScrollRight.value = el.scrollLeft < el.scrollWidth - el.clientWidth - 2
+    }
+
+    function scrollPills(delta) {
+      const el = pillsContainer.value
+      if (!el) return
+      el.scrollBy({ left: delta, behavior: 'smooth' })
+    }
+
+    function startDrag(e) {
+      isDragging.value = true
+      wasDragging.value = false
+      dragStartX = e.pageX - pillsContainer.value.offsetLeft
+      dragScrollLeft = pillsContainer.value.scrollLeft
+      pillsContainer.value.style.cursor = 'grabbing'
+    }
+
+    function onDrag(e) {
+      if (!isDragging.value) return
+      e.preventDefault()
+      const x = e.pageX - pillsContainer.value.offsetLeft
+      const walk = x - dragStartX
+      if (Math.abs(walk) > 3) wasDragging.value = true
+      pillsContainer.value.scrollLeft = dragScrollLeft - walk
+    }
+
+    function endDrag() {
+      isDragging.value = false
+      if (pillsContainer.value) pillsContainer.value.style.cursor = 'grab'
     }
 
     watch(selectedSource, () => {
@@ -215,32 +291,30 @@ export default {
         emit('source-changed', currentSource.value)
         showSourceInfo.value = true
         setTimeout(() => showSourceInfo.value = false, 4000)
-        loading.value = true 
-        setTimeout(() => loading.value = false, 800) // Synthetic load feel
+        loading.value = true
+        setTimeout(() => loading.value = false, 600)
       }
+    })
+
+    watch(availableSources, () => {
+      nextTick(() => updateScrollState())
     })
 
     onMounted(() => {
       if (props.autoPlay) initializePlayer()
     })
 
+    onUnmounted(() => {
+      removeNavigationGuard()
+    })
+
     return {
-      showPlayer,
-      loading,
-      error,
-      selectedSource,
-      availableSources,
-      showSourceInfo,
-      backdropUrl,
-      currentSource,
-      currentEmbedUrl,
-      needsSandbox,
-      getPlaySubtext,
-      getPlayerMeta,
-      initializePlayer,
-      closePlayer,
-      handleIframeError,
-      retryLoad
+      showPlayer, loading, error, selectedSource, availableSources,
+      showSourceInfo, backdropUrl, currentSource, currentEmbedUrl,
+      needsSandbox, getPlaySubtext, getPlayerMeta, initializePlayer,
+      closePlayer, handleIframeError, retryLoad,
+      pillsContainer, canScrollLeft, canScrollRight, wasDragging,
+      updateScrollState, scrollPills, startDrag, onDrag, endDrag
     }
   }
 }
@@ -251,16 +325,14 @@ export default {
   width: 100%;
   overflow: hidden;
   position: relative;
-  background: var(--bg-primary);
-  border-bottom: 1px solid var(--border-color);
+  border-radius: var(--border-radius-lg);
+  background: var(--bg-secondary);
 }
 
-/* PLACEHOLDER STATE */
 .player-placeholder {
   position: relative;
   width: 100%;
   aspect-ratio: 16/9;
-  min-height: 300px;
   cursor: pointer;
   display: flex;
   align-items: center;
@@ -268,29 +340,25 @@ export default {
   overflow: hidden;
 }
 
-.mesh-backdrop {
+.placeholder-bg {
   position: absolute;
-  inset: -50%;
-  background: var(--bg-primary);
-  z-index: 0;
+  inset: 0;
+  background: var(--bg-secondary);
 }
 
 .backdrop-image {
   position: absolute;
-  top: 0;
-  left: 0;
+  inset: 0;
   width: 100%;
   height: 100%;
   object-fit: cover;
-  opacity: 0.4;
-  mask-image: linear-gradient(to top, transparent, black 40%);
-  -webkit-mask-image: linear-gradient(to top, transparent, black 40%);
-  transition: opacity var(--transition-slow), transform 3s ease;
+  opacity: 0.35;
+  transition: opacity 0.5s ease, transform 2s ease;
 }
 
 .player-placeholder:hover .backdrop-image {
-  opacity: 0.6;
-  transform: scale(1.05);
+  opacity: 0.5;
+  transform: scale(1.03);
 }
 
 .play-overlay {
@@ -299,174 +367,188 @@ export default {
   display: flex;
   flex-direction: column;
   align-items: center;
-  pointer-events: none;
+  gap: 14px;
 }
 
 .play-button {
-  background: transparent;
-  border: 1px solid var(--text-primary);
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.2);
   color: var(--text-primary);
-  border-radius: 0;
-  width: 80px;
-  height: 80px;
   display: flex;
   align-items: center;
   justify-content: center;
-  margin-bottom: 24px;
-  transition: all var(--transition-fast);
   cursor: pointer;
-  pointer-events: auto;
+  transition: transform var(--transition-fast), background var(--transition-fast);
 }
 
 .play-button:hover {
-  background: var(--text-primary);
-  color: var(--bg-primary);
+  transform: scale(1.1);
+  background: rgba(255, 255, 255, 0.2);
 }
 
-.play-icon {
-  width: 48px;
-  height: 48px;
-  margin-left: 4px; /* Optically center triangle */
-}
-
-.play-text {
-  font-size: 1.5rem;
-  font-weight: 700;
-  letter-spacing: -0.05em;
-  color: var(--text-primary);
-  margin: 0 0 8px 0;
-  text-transform: lowercase;
-}
-
-.play-subtext {
+.play-label {
   font-size: 0.85rem;
-  color: var(--text-secondary);
   font-weight: 500;
-  margin: 0;
-  padding: 4px 12px;
-  border: 1px solid var(--border-color);
-  background: transparent;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
+  color: var(--text-secondary);
+  letter-spacing: 0.02em;
 }
 
-/* PLAYER CONTAINER */
 .player-container {
   display: flex;
   flex-direction: column;
-  width: 100%;
-  background: #000;
+  background: var(--bg-primary);
 }
 
-.player-header {
+.player-toolbar {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 16px 24px;
-  background: var(--bg-primary);
+  padding: 12px 16px;
+  background: var(--bg-secondary);
   border-bottom: 1px solid var(--border-color);
-  z-index: 10;
+  gap: 12px;
 }
 
-.player-info {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-
-.player-title {
-  margin: 0;
-  color: var(--text-primary);
-  font-size: 1.1rem;
-  font-weight: 600;
-  letter-spacing: -0.01em;
-}
-
-.player-meta {
-  margin: 0;
-  color: var(--text-secondary);
-  font-size: 0.85rem;
-  font-weight: 500;
-}
-
-.player-controls {
+.toolbar-left {
   display: flex;
   align-items: center;
-  gap: 20px;
+  gap: 12px;
+  min-width: 0;
 }
 
-.source-selector {
-  display: flex;
-  background: transparent;
-  padding: 4px;
-  border: 1px solid var(--border-color);
-  gap: 4px;
-}
-
-.source-btn {
-  background: transparent;
-  color: var(--text-secondary);
-  border: none;
-  padding: 6px 16px;
-  font-size: 0.8rem;
+.toolbar-title {
+  margin: 0;
+  font-size: 0.95rem;
   font-weight: 600;
-  cursor: pointer;
-  transition: all var(--transition-fast);
-}
-
-.source-btn:hover {
   color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
-.source-btn.active {
-  background: var(--text-primary);
-  color: var(--bg-primary);
-}
-
-.close-btn {
-  background: transparent;
-  border: 1px solid var(--border-color);
+.toolbar-meta {
+  font-size: 0.8rem;
   color: var(--text-secondary);
-  width: 36px;
-  height: 36px;
+  font-weight: 500;
+  flex-shrink: 0;
+}
+
+.toolbar-right {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-shrink: 0;
+}
+
+.source-pills-wrap {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  position: relative;
+}
+
+.scroll-arrow {
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  border: 1px solid var(--border-color);
+  background: var(--bg-secondary);
+  color: var(--text-secondary);
   display: flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
+  flex-shrink: 0;
+  transition: all var(--transition-fast);
+  z-index: 2;
+}
+
+.scroll-arrow:hover {
+  color: var(--text-primary);
+  background: rgba(255, 255, 255, 0.1);
+  border-color: var(--border-hover);
+}
+
+.source-pills {
+  display: flex;
+  gap: 4px;
+  overflow-x: auto;
+  scrollbar-width: none;
+  max-width: 460px;
+  cursor: grab;
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+.source-pills::-webkit-scrollbar {
+  display: none;
+}
+
+.source-pill {
+  background: transparent;
+  color: var(--text-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--border-radius-full);
+  padding: 5px 14px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+  flex-shrink: 0;
   transition: all var(--transition-fast);
 }
 
-.close-btn:hover {
+.source-pill:hover {
+  color: var(--text-primary);
+  border-color: var(--border-hover);
+}
+
+.source-pill.active {
   background: var(--text-primary);
   color: var(--bg-primary);
   border-color: var(--text-primary);
 }
 
-.close-icon {
-  width: 20px;
-  height: 20px;
+.close-btn {
+  background: transparent;
+  border: 1px solid var(--border-color);
+  border-radius: var(--border-radius-full);
+  color: var(--text-secondary);
+  width: 34px;
+  height: 34px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  flex-shrink: 0;
 }
 
-/* IFRAME / VIDEO WRAPPER */
-.iframe-container {
+.close-btn:hover {
+  color: var(--text-primary);
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.iframe-wrap {
   position: relative;
   width: 100%;
   aspect-ratio: 16/9;
   background: #000;
-  min-height: 400px;
+  min-height: 360px;
 }
 
 .video-iframe {
   position: absolute;
-  top: 0;
-  left: 0;
+  inset: 0;
   width: 100%;
   height: 100%;
   border: none;
-  background: #000;
 }
 
-/* OVERLAYS (Loading, Error) */
 .overlay {
   position: absolute;
   inset: 0;
@@ -475,55 +557,51 @@ export default {
   flex-direction: column;
   align-items: center;
   justify-content: center;
+  gap: 12px;
   z-index: 5;
 }
 
-.loader-circle {
-  width: 48px;
-  height: 48px;
-  border: 2px solid var(--border-color);
-  border-top-color: var(--text-primary);
+.spinner {
+  width: 36px;
+  height: 36px;
+  border: 2px solid rgba(255, 255, 255, 0.1);
+  border-top-color: var(--accent);
   border-radius: 50%;
-  animation: spin 1s linear infinite;
-  margin-bottom: 16px;
+  animation: spin 0.8s linear infinite;
 }
 
 @keyframes spin {
   to { transform: rotate(360deg); }
 }
 
-.overlay-text {
-  color: var(--text-primary);
-  font-weight: 500;
-  letter-spacing: 0.05em;
-  font-size: 0.9rem;
-  text-transform: uppercase;
-}
-
-.error-overlay h3 {
-  color: var(--text-primary);
-  margin: 16px 0 8px;
-  font-size: 1.25rem;
-}
-
-.error-overlay p {
+.overlay-label {
+  font-size: 0.85rem;
   color: var(--text-secondary);
-  margin-bottom: 24px;
+  font-weight: 500;
 }
 
-.error-icon {
-  width: 64px;
-  height: 64px;
+.overlay--error h3 {
   color: var(--text-primary);
+  font-size: 1.1rem;
+  margin: 0;
+}
+
+.overlay--error p {
+  color: var(--text-secondary);
+  font-size: 0.9rem;
+  margin: 0;
 }
 
 .retry-btn {
   background: transparent;
   color: var(--text-primary);
-  border: 1px solid var(--text-primary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--border-radius-full);
   padding: 10px 24px;
   font-weight: 600;
+  font-size: 0.85rem;
   cursor: pointer;
+  margin-top: 8px;
   transition: all var(--transition-fast);
 }
 
@@ -532,93 +610,61 @@ export default {
   color: var(--bg-primary);
 }
 
-/* SOURCE INFO TOAST */
-.source-info {
+.source-toast {
   position: absolute;
-  bottom: 24px;
+  bottom: 16px;
   left: 50%;
   transform: translateX(-50%);
   z-index: 20;
-  pointer-events: none;
-  animation: slideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
-}
-
-@keyframes slideUp {
-  from { opacity: 0; transform: translate(-50%, 20px); }
-  to { opacity: 1; transform: translate(-50%, 0); }
-}
-
-.source-alert {
-  background: var(--bg-primary);
-  border: 1px solid var(--border-color);
-  padding: 10px 20px;
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 8px;
+  background: var(--bg-glass);
+  backdrop-filter: blur(16px);
+  border: 1px solid var(--border-color);
+  border-radius: var(--border-radius-full);
+  padding: 8px 18px;
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+  white-space: nowrap;
+  pointer-events: none;
 }
 
-.info-icon {
-  width: 20px;
-  height: 20px;
+.source-toast strong {
   color: var(--text-primary);
 }
 
-.info-text {
-  color: var(--text-primary);
-  font-size: 0.85rem;
+.toast-enter-active {
+  transition: opacity 0.3s ease, transform 0.3s ease;
+}
+.toast-leave-active {
+  transition: opacity 0.2s ease, transform 0.2s ease;
+}
+.toast-enter-from,
+.toast-leave-to {
+  opacity: 0;
+  transform: translateX(-50%) translateY(8px);
 }
 
-.info-text strong {
-  font-weight: 600;
-}
-
-/* RESPONSIVE DESIGN */
 @media (max-width: 768px) {
-  .player-header {
+  .player-toolbar {
     flex-direction: column;
     align-items: flex-start;
-    gap: 16px;
-    padding: 16px;
+    padding: 10px 12px;
   }
-  
-  .player-controls {
+
+  .toolbar-right {
     width: 100%;
     justify-content: space-between;
   }
-  
-  .source-selector {
-    flex-wrap: nowrap;
-    overflow-x: auto;
-    width: calc(100% - 48px);
-    -webkit-overflow-scrolling: touch;
-    scrollbar-width: none;
+
+  .source-pills {
+    max-width: calc(100% - 80px);
   }
-  
-  .source-selector::-webkit-scrollbar {
-    display: none;
-  }
-  
-  .source-btn {
-    flex-shrink: 0;
-  }
-  
+
   .play-button {
-    width: 64px;
-    height: 64px;
-  }
-  
-  .play-icon {
-    width: 32px;
-    height: 32px;
-  }
-  
-  .source-info {
-    bottom: 12px;
-    width: calc(100% - 24px);
-  }
-  
-  .source-alert {
-    width: 100%;
+    width: 52px;
+    height: 52px;
   }
 }
 </style>

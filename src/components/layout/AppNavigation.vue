@@ -1,55 +1,68 @@
 <template>
-  <header class="minimal-nav">
-    <div class="nav-container container">
-      <router-link to="/" class="brand-link" aria-label="Home">
-        <span class="brand-text">empty.tv</span>
+  <header class="nav-bar" :class="{ scrolled: isScrolled, hidden: isHidden }">
+    <div class="nav-inner">
+      <router-link to="/" class="nav-brand" aria-label="Home">
+        <span class="brand-name">empty</span>
       </router-link>
 
-      <nav class="nav-links d-none d-md-flex">
+      <nav class="nav-center">
         <router-link
           v-for="link in navLinks"
           :key="link.name"
           :to="link.to"
-          class="nav-item"
+          class="nav-link"
+          :class="{ active: $route.path === link.to }"
         >
           {{ link.text }}
         </router-link>
       </nav>
 
-      <div class="actions">
-        <button class="icon-btn search-btn" @click="openSearch" aria-label="Search">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" class="search-icon">
-            <path stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+      <div class="nav-actions">
+        <button class="nav-icon-btn" @click="openSearch" aria-label="Search">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="11" cy="11" r="8"/>
+            <line x1="21" y1="21" x2="16.65" y2="16.65"/>
           </svg>
         </button>
 
-        <button class="icon-btn menu-btn d-md-none" @click="toggleMenu" aria-label="Menu">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
-            <path stroke="currentColor" stroke-width="2" stroke-linecap="round" d="M4 6h16M4 12h16M4 18h16"/>
+        <button class="nav-icon-btn mobile-menu-toggle" @click="toggleMenu" aria-label="Menu">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+            <line x1="4" y1="6" x2="20" y2="6"/>
+            <line x1="4" y1="12" x2="20" y2="12"/>
+            <line x1="4" y1="18" x2="20" y2="18"/>
           </svg>
         </button>
       </div>
     </div>
-    
-    <!-- Mobile Menu Overlay -->
-    <div class="mobile-menu-overlay" :class="{ 'is-active': isMenuOpen }">
-      <button class="close-menu-btn" @click="toggleMenu">
-        <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
-          <path stroke="currentColor" stroke-width="2" stroke-linecap="round" d="M6 18L18 6M6 6l12 12"/>
-        </svg>
-      </button>
-      <div class="mobile-nav-links">
-        <router-link
-          v-for="link in navLinks"
-          :key="link.name"
-          :to="link.to"
-          class="mobile-nav-item"
-          @click="toggleMenu"
-        >
-          {{ link.text }}
-        </router-link>
+
+    <transition name="mobile-slide">
+      <div v-if="isMenuOpen" class="mobile-drawer">
+        <div class="drawer-header">
+          <span class="drawer-title">Menu</span>
+          <button class="nav-icon-btn" @click="toggleMenu" aria-label="Close">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+              <line x1="18" y1="6" x2="6" y2="18"/>
+              <line x1="6" y1="6" x2="18" y2="18"/>
+            </svg>
+          </button>
+        </div>
+        <nav class="drawer-links">
+          <router-link
+            v-for="link in navLinks"
+            :key="link.name"
+            :to="link.to"
+            class="drawer-link"
+            @click="toggleMenu"
+          >
+            {{ link.text }}
+          </router-link>
+        </nav>
       </div>
-    </div>
+    </transition>
+
+    <transition name="fade">
+      <div v-if="isMenuOpen" class="drawer-backdrop" @click="toggleMenu"></div>
+    </transition>
   </header>
 </template>
 
@@ -59,6 +72,9 @@ export default {
   data() {
     return {
       isMenuOpen: false,
+      isScrolled: false,
+      isHidden: false,
+      lastScrollY: 0,
       navLinks: [
         { name: 'home', text: 'Home', to: '/' },
         { name: 'movies', text: 'Movies', to: '/movies' },
@@ -69,163 +85,221 @@ export default {
       ]
     }
   },
+  mounted() {
+    window.addEventListener('scroll', this.handleScroll, { passive: true })
+  },
+  beforeUnmount() {
+    window.removeEventListener('scroll', this.handleScroll)
+  },
   methods: {
     openSearch() {
-      this.$router.push('/search');
-      this.isMenuOpen = false;
+      this.$router.push('/search')
+      this.isMenuOpen = false
     },
     toggleMenu() {
-      this.isMenuOpen = !this.isMenuOpen;
-      if (this.isMenuOpen) {
-        document.body.style.overflow = 'hidden';
-      } else {
-        document.body.style.overflow = '';
-      }
+      this.isMenuOpen = !this.isMenuOpen
+      document.body.style.overflow = this.isMenuOpen ? 'hidden' : ''
+    },
+    handleScroll() {
+      const y = window.scrollY
+      this.isScrolled = y > 20
+      this.isHidden = y > 400 && y > this.lastScrollY
+      this.lastScrollY = y
     }
   }
 }
 </script>
 
 <style scoped>
-.minimal-nav {
+.nav-bar {
   position: fixed;
   top: 0;
   left: 0;
-  width: 100%;
+  right: 0;
   z-index: 1000;
-  background: rgba(0, 0, 0, 0.85);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-  border-bottom: 1px solid var(--border-color);
-  height: 70px;
+  height: var(--nav-height);
   display: flex;
   align-items: center;
+  padding: 0 clamp(1rem, 4vw, 3rem);
+  transition: background 0.3s ease, transform 0.3s ease, box-shadow 0.3s ease;
 }
 
-.nav-container {
+.nav-bar.scrolled {
+  background: var(--bg-glass);
+  backdrop-filter: blur(20px) saturate(1.4);
+  -webkit-backdrop-filter: blur(20px) saturate(1.4);
+  box-shadow: 0 1px 0 var(--border-color);
+}
+
+.nav-bar.hidden {
+  transform: translateY(-100%);
+}
+
+.nav-inner {
   display: flex;
   align-items: center;
   justify-content: space-between;
   width: 100%;
+  max-width: 1400px;
+  margin: 0 auto;
 }
 
-.brand-link {
-  text-decoration: none;
-  color: var(--text-primary);
+.nav-brand {
   display: flex;
   align-items: center;
+  gap: 10px;
+  text-decoration: none;
+  color: var(--text-primary);
+  flex-shrink: 0;
 }
 
-.brand-text {
+.brand-name {
   font-weight: 800;
-  font-size: 1.25rem;
-  letter-spacing: -0.05em;
-  font-family: inherit;
+  font-size: 1.15rem;
+  letter-spacing: -0.04em;
 }
 
-.nav-links {
+.nav-center {
   display: none;
-  gap: 2rem;
+  gap: 6px;
   align-items: center;
 }
 
-@media (min-width: 768px) {
-  .nav-links {
+@media (min-width: 860px) {
+  .nav-center {
     display: flex;
   }
 }
 
-.nav-item {
+.nav-link {
   text-decoration: none;
   color: var(--text-secondary);
   font-weight: 500;
-  font-size: 0.9rem;
-  transition: color var(--transition-fast);
-  position: relative;
+  font-size: 0.85rem;
+  padding: 6px 14px;
+  border-radius: var(--border-radius-full);
+  transition: color var(--transition-fast), background var(--transition-fast);
 }
 
-.nav-item:hover, .nav-item.router-link-active {
+.nav-link:hover {
   color: var(--text-primary);
+  background: rgba(255, 255, 255, 0.05);
 }
 
-.actions {
+.nav-link.active,
+.nav-link.router-link-active {
+  color: var(--text-primary);
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.nav-actions {
   display: flex;
   align-items: center;
-  gap: 1rem;
+  gap: 4px;
+  flex-shrink: 0;
 }
 
-.icon-btn {
-  background: transparent;
+.nav-icon-btn {
+  background: none;
   border: none;
-  color: var(--text-primary);
+  color: var(--text-secondary);
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 4px;
-  transition: opacity var(--transition-fast);
+  width: 40px;
+  height: 40px;
+  border-radius: var(--border-radius-full);
+  transition: color var(--transition-fast), background var(--transition-fast);
 }
 
-.icon-btn:hover {
-  opacity: 0.7;
+.nav-icon-btn:hover {
+  color: var(--text-primary);
+  background: rgba(255, 255, 255, 0.06);
 }
 
-.menu-btn {
+.mobile-menu-toggle {
   display: flex;
 }
 
-@media (min-width: 768px) {
-  .menu-btn {
+@media (min-width: 860px) {
+  .mobile-menu-toggle {
     display: none;
   }
 }
 
-.mobile-menu-overlay {
+.drawer-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.6);
+  z-index: 1998;
+}
+
+.mobile-drawer {
   position: fixed;
   top: 0;
-  left: 0;
-  width: 100%;
+  right: 0;
+  width: min(320px, 85vw);
   height: 100vh;
-  background: var(--bg-primary);
-  z-index: 2000;
+  background: var(--bg-secondary);
+  border-left: 1px solid var(--border-color);
+  z-index: 1999;
   display: flex;
   flex-direction: column;
-  padding: 2rem;
-  transform: translateY(-100%);
-  transition: transform var(--transition-normal);
+  padding: 24px;
 }
 
-.mobile-menu-overlay.is-active {
-  transform: translateY(0);
-}
-
-.close-menu-btn {
-  align-self: flex-end;
-  background: transparent;
-  border: none;
-  color: var(--text-primary);
-  cursor: pointer;
-  padding: 1rem;
-}
-
-.mobile-nav-links {
+.drawer-header {
   display: flex;
-  flex-direction: column;
-  gap: 2rem;
-  margin-top: 4rem;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 32px;
 }
 
-.mobile-nav-item {
-  font-size: 2rem;
+.drawer-title {
   font-weight: 700;
+  font-size: 1.1rem;
+}
+
+.drawer-links {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.drawer-link {
+  font-size: 1.05rem;
+  font-weight: 500;
   color: var(--text-secondary);
   text-decoration: none;
-  transition: color var(--transition-fast);
-  letter-spacing: -0.04em;
+  padding: 12px 16px;
+  border-radius: var(--border-radius-md);
+  transition: color var(--transition-fast), background var(--transition-fast);
 }
 
-.mobile-nav-item:hover, .mobile-nav-item.router-link-active {
+.drawer-link:hover,
+.drawer-link.router-link-active {
   color: var(--text-primary);
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.mobile-slide-enter-active {
+  transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.mobile-slide-leave-active {
+  transition: transform 0.25s ease-in;
+}
+.mobile-slide-enter-from,
+.mobile-slide-leave-to {
+  transform: translateX(100%);
+}
+
+.fade-enter-active,
+.fade-leave-active {
+  transition: opacity 0.25s ease;
+}
+.fade-enter-from,
+.fade-leave-to {
+  opacity: 0;
 }
 </style>
-

@@ -416,7 +416,7 @@ export default {
 .page-container {
   max-width: 1400px;
   margin: 0 auto;
-  padding: 0 5vw;
+  padding: 0 clamp(1.5rem, 5vw, 4rem);
 }
 
 .hero-section {
@@ -461,9 +461,9 @@ export default {
 
 .poster-card {
   width: 100%;
-  border-radius: 4px;
+  border-radius: var(--border-radius-lg);
   overflow: hidden;
-  box-shadow: 0 20px 40px rgba(0,0,0,0.4);
+  box-shadow: 0 20px 60px rgba(0,0,0,0.5);
 }
 
 .poster-image {
@@ -473,13 +473,12 @@ export default {
 }
 
 .movie-title {
-  font-size: clamp(2.5rem, 5vw, 4rem);
+  font-size: clamp(2rem, 4.5vw, 3.2rem);
   font-weight: 800;
-  letter-spacing: -0.04em;
+  letter-spacing: -0.03em;
   color: var(--text-primary);
   line-height: 1.1;
   margin-bottom: 0.5rem;
-  text-transform: lowercase;
 }
 
 .movie-tagline {
@@ -501,16 +500,17 @@ export default {
   display: flex;
   align-items: center;
   gap: 6px;
-  font-size: 0.85rem;
+  font-size: 0.8rem;
   font-weight: 600;
-  padding: 6px 12px;
+  padding: 5px 14px;
   border: 1px solid var(--border-color);
-  background: var(--bg-primary);
+  border-radius: var(--border-radius-full);
+  background: rgba(255, 255, 255, 0.04);
   color: var(--text-secondary);
 }
 
 .meta-item {
-  font-size: 1rem;
+  font-size: 0.95rem;
   color: var(--text-secondary);
   font-weight: 500;
 }
@@ -540,12 +540,13 @@ export default {
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 12px 24px;
+  padding: 12px 26px;
   font-weight: 600;
   cursor: pointer;
   transition: all var(--transition-fast);
-  border: 1px solid var(--text-primary);
-  font-size: 1rem;
+  font-size: 0.9rem;
+  border-radius: var(--border-radius-full);
+  border: none;
 }
 
 .btn-primary {
@@ -554,18 +555,19 @@ export default {
 }
 
 .btn-primary:hover {
-  background: transparent;
-  color: var(--text-primary);
+  opacity: 0.85;
+  transform: scale(1.03);
 }
 
 .btn-secondary {
-  background: transparent;
+  background: rgba(255, 255, 255, 0.08);
   color: var(--text-primary);
+  border: 1px solid var(--border-color);
 }
 
 .btn-secondary:hover {
-  background: var(--text-primary);
-  color: var(--bg-primary);
+  background: rgba(255, 255, 255, 0.14);
+  border-color: var(--border-hover);
 }
 
 .icon {
@@ -580,13 +582,13 @@ export default {
 }
 
 .section-title {
-  font-size: 1.5rem;
+  font-size: 1.3rem;
   font-weight: 700;
+  letter-spacing: -0.02em;
   color: var(--text-primary);
   margin-bottom: 1.5rem;
   padding-bottom: 0.75rem;
   border-bottom: 1px solid var(--border-color);
-  text-transform: lowercase;
 }
 
 .section-card {
@@ -629,7 +631,7 @@ export default {
   width: 100%;
   aspect-ratio: 2/3;
   object-fit: cover;
-  border-radius: 4px;
+  border-radius: var(--border-radius-md);
   margin-bottom: 8px;
 }
 
@@ -646,8 +648,9 @@ export default {
 }
 
 .info-sidebar {
-  background: var(--bg-primary);
+  background: var(--bg-secondary);
   border: 1px solid var(--border-color);
+  border-radius: var(--border-radius-lg);
   padding: 24px;
 }
 
