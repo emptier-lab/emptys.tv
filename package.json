@@ -1,0 +1,49 @@
+{
+  "name": "empty.tv",
+  "version": "1.0.0",
+  "description": "A modern Vue.js movie and TV streaming website with multiple video sources",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "build:rocks": "vite build",
+    "preview": "vite preview",
+    "preview:rocks": "vite preview",
+    "lint": "eslint . --ext .vue,.js,.jsx,.cjs,.mjs --fix --ignore-path .gitignore"
+  },
+  "dependencies": {
+    "@vueuse/core": "^13.5.0",
+    "axios": "^1.6.2",
+    "pinia": "^2.1.7",
+    "vue": "^3.4.0",
+    "vue-router": "^4.2.5"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-vue": "^4.5.0",
+    "@vue/eslint-config-prettier": "^8.0.0",
+    "eslint": "^8.55.0",
+    "eslint-plugin-vue": "^9.18.1",
+    "prettier": "^3.1.0",
+    "terser": "^5.43.1",
+    "vite": "^5.0.0"
+  },
+  "keywords": [
+    "vue",
+    "vuetify",
+    "streaming",
+    "movies",
+    "tv-shows",
+    "tmdb",
+    "video-player"
+  ],
+  "author": "empty.tv Team",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/emptier-lab/dashboard.git"
+  },
+  "bugs": {
+    "url": "https://github.com/emptier-lab/dashboard/issues"
+  },
+  "homepage": "https://emptier-lab.github.io/dashboard"
+}

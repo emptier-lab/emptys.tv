@@ -1,0 +1,150 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta http-equiv="refresh" content="0; url=/tv/" />
+    <title>empty.tv - Redirecting...</title>
+    <script>
+      // Cross-browser compatible redirect for empty.tv paths
+      (function () {
+        var l = window.location;
+        var path = l.pathname;
+        var search = l.search;
+        var hash = l.hash;
+
+        // Debug info
+        console.log("404 Cross-browser redirect:", {
+          pathname: path,
+          search: search,
+          hash: hash,
+          userAgent: navigator.userAgent,
+        });
+
+        // Function to perform redirect with multiple fallbacks
+        function performRedirect(targetUrl) {
+          console.log("Redirecting to:", targetUrl);
+
+          // Method 1: location.replace (preferred)
+          try {
+            window.location.replace(targetUrl);
+            return;
+          } catch (e) {
+            console.warn("location.replace failed:", e);
+          }
+
+          // Method 2: location.href
+          try {
+            window.location.href = targetUrl;
+            return;
+          } catch (e) {
+            console.warn("location.href failed:", e);
+          }
+
+          // Method 3: location.assign
+          try {
+            window.location.assign(targetUrl);
+            return;
+          } catch (e) {
+            console.warn("location.assign failed:", e);
+          }
+
+          // Method 4: Force with timeout
+          setTimeout(function () {
+            window.location = targetUrl;
+          }, 50);
+        }
+
+        // Check for empty.tv paths
+        if (path.indexOf("empty.tv") !== -1) {
+          // Handle /empty.tv/tv/ -> /tv/
+          if (path.indexOf("/empty.tv/tv/") !== -1) {
+            var remainingPath = path.replace("/empty.tv/tv/", "/");
+            var targetUrl = "/tv" + remainingPath + search + hash;
+            performRedirect(targetUrl);
+            return;
+          }
+
+          // Handle /empty.tv/ -> /tv/
+          if (path === "/empty.tv" || path === "/empty.tv/") {
+            performRedirect("/tv/" + search + hash);
+            return;
+          }
+
+          // Handle /empty.tv/anything -> /tv/anything
+          var newPath = path.replace(/^\/empty\.tv/, "");
+          performRedirect("/tv" + newPath + search + hash);
+          return;
+        }
+
+        // Handle SPA routing for /tv/ paths
+        var segments = path.split("/").filter(function (s) {
+          return s !== "";
+        });
+
+        if (segments.length > 0 && segments[0] === "tv") {
+          if (segments.length > 1) {
+            // Convert path to hash routing: /tv/movie/123 -> /tv/#/movie/123
+            var routePath = "/" + segments.slice(1).join("/");
+            performRedirect("/tv/#" + routePath + search + hash);
+            return;
+          } else {
+            // Just /tv -> /tv/
+            performRedirect("/tv/" + search + hash);
+            return;
+          }
+        }
+
+        // Default redirect to root
+        performRedirect("/" + search + hash);
+      })();
+    </script>
+    <style>
+      body {
+        font-family:
+          "Inter",
+          -apple-system,
+          BlinkMacSystemFont,
+          "Segoe UI",
+          sans-serif;
+        background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+        color: white;
+        margin: 0;
+        padding: 0;
+        min-height: 100vh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+      .loading-container {
+        text-align: center;
+      }
+      .loading-spinner {
+        width: 60px;
+        height: 60px;
+        border: 4px solid rgba(59, 130, 246, 0.2);
+        border-left: 4px solid #3b82f6;
+        border-radius: 50%;
+        animation: spin 1s linear infinite;
+        margin: 0 auto 20px;
+      }
+      @keyframes spin {
+        0% {
+          transform: rotate(0deg);
+        }
+        100% {
+          transform: rotate(360deg);
+        }
+      }
+      .loading-text {
+        font-size: 18px;
+        color: #3b82f6;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="loading-container">
+      <div class="loading-spinner"></div>
+      <div class="loading-text">Redirecting to empty.tv...</div>
+    </div>
+  </body>
+</html>
