@@ -230,7 +230,7 @@
 </template>
 
 <script>
-import { ref, computed, onMounted, watch } from 'vue'
+import { ref, computed, onMounted, watch, nextTick } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import VideoPlayer from '@/components/common/VideoPlayer.vue'
 import MediaCard from '@/components/common/MediaCard.vue'
@@ -294,6 +294,9 @@ export default {
 
     function watchMovie() {
       showPlayer.value = true
+      nextTick(() => {
+        document.querySelector('.player-container')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+      })
     }
 
     function toggleFavorite() {

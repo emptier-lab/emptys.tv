@@ -222,7 +222,7 @@ class EnhancedAdBlocker {
     this.startContinuousCleanup();
 
     // Block redirects
-    // this.setupRedirectBlocking(); // Disabled to prevent redirect loops
+    this.setupRedirectBlocking();
 
   }
 
@@ -363,8 +363,23 @@ class EnhancedAdBlocker {
   }
 
   setupRedirectBlocking() {
-    // Block location changes to suspicious URLs
-    let isRedirecting = false;
+    // Block location changes to suspicious URLs by monitoring location and beforeunload
+
+    // Intercept beforeunload which fires when iframe attempts to redirect main window
+    window.addEventListener('beforeunload', (e) => {
+      // If we're on a page with a video player (e.g. /tv/ or /movie/ or /watch/), warn the user
+      // so the browser automatically blocks the immediate background redirect.
+      const isWatchPage = window.location.pathname.includes('/tv/') ||
+        window.location.pathname.includes('/movie/') ||
+        window.location.pathname.includes('/watch');
+
+      if (document.querySelector('iframe.video-iframe') || isWatchPage) {
+        e.preventDefault();
+        e.returnValue = 'Are you sure you want to leave? (A popup may be trying to redirect you)';
+        this.redirectCount++;
+        return e.returnValue;
+      }
+    });
 
     const originalReplace = history.replaceState;
     history.replaceState = (...args) => {
@@ -386,18 +401,20 @@ class EnhancedAdBlocker {
       return originalPushState.apply(history, args);
     };
 
-    // Location change monitoring disabled to prevent redirect loops
-    // let lastLocation = window.location.href;
-    // setInterval(() => {
-    //   if (window.location.href !== lastLocation) {
-    //     if (this.shouldBlockURL(window.location.href)) {
-    //       window.history.back();
-    //       this.redirectCount++;
-    //       console.log("🚫 Blocked location change:", window.location.href);
-    //     }
-    //     lastLocation = window.location.href;
-    //   }
-    // }, 100);
+    // Location change monitoring to immediately stop suspicious redirects if beforeunload fails
+    let lastLocation = window.location.href;
+    setInterval(() => {
+      if (window.location.href !== lastLocation) {
+        if (this.shouldBlockURL(window.location.href)) {
+          window.stop(); // Stop the loading immediately
+          window.location.href = lastLocation; // Go back instantly
+          this.redirectCount++;
+          console.log("🚫 Blocked malicious location change to:", window.location.href);
+        } else {
+          lastLocation = window.location.href;
+        }
+      }
+    }, 100);
   }
 
   startContinuousCleanup() {
