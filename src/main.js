@@ -113,3 +113,13 @@ app.mount("#app");
 
 import { adBlocker } from "./services/adblocker";
 adBlocker.enable();
+
+// Handle 404 redirects passed via query params from GitHub Pages
+const urlParams = new URLSearchParams(window.location.search);
+const redirectPath = urlParams.get('redirect');
+if (redirectPath) {
+  // Wait for router to be ready then navigate
+  router.isReady().then(() => {
+    router.replace(redirectPath);
+  });
+}

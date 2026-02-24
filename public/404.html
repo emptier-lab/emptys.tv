@@ -8,18 +8,9 @@
     var path = window.location.pathname;
     var search = window.location.search;
     var hash = window.location.hash;
-
-    // In Netlify/Vercel SPA, catching a 404 should preserve the URL.
-    // If not configured, we manually pass the path to the root.
-    // Actually, Vue router uses history mode. We just want to redirect them
-    // to the actual path itself using history API or simply by letting the SPA load.
-    // However, since this is a static 404.html served by GitHub Pages or similar, 
-    // we need to tell it to load the index with the path as a query param or redirect back to `/`.
-    // We will just redirect to `/?url=` so index can handle it.
-
     var redirectUrl = "/";
     if (path.length > 1) {
-      redirectUrl = path + search + hash;
+      redirectUrl = "/?redirect=" + encodeURIComponent(path + search + hash);
     }
     window.location.replace(redirectUrl);
   </script>
