@@ -66,7 +66,6 @@
           allowfullscreen
           webkitallowfullscreen
           mozallowfullscreen
-          sandbox="allow-scripts allow-same-origin allow-presentation"
           allow="autoplay; fullscreen; picture-in-picture"
           referrerpolicy="origin"
           loading="lazy"
