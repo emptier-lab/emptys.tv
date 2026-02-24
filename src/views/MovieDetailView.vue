@@ -1,5 +1,5 @@
 <template>
-  <div class="movie-detail-view page-layout">
+  <div class="movie-detail-view">
     <div v-if="movie" class="movie-content">
       <!-- Hero Section -->
       <div class="hero-section">
@@ -419,9 +419,13 @@ export default {
   padding: 0 clamp(1.5rem, 5vw, 4rem);
 }
 
+.player-container {
+  padding-bottom: 2rem;
+}
+
 .hero-section {
   position: relative;
-  min-height: 70vh;
+  min-height: 100vh;
   margin-bottom: 3rem;
   display: flex;
   align-items: center;

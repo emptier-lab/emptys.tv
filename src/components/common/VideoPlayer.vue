@@ -58,7 +58,7 @@
 
       <div class="iframe-wrap">
         <iframe
-          v-if="currentEmbedUrl && !needsSandbox"
+          v-if="currentEmbedUrl"
           :src="currentEmbedUrl"
           width="100%"
           height="100%"
@@ -66,22 +66,7 @@
           allowfullscreen
           webkitallowfullscreen
           mozallowfullscreen
-          allow="autoplay; fullscreen; picture-in-picture"
-          referrerpolicy="origin"
-          loading="lazy"
-          class="video-iframe"
-          @error="handleIframeError"
-        />
-        <iframe
-          v-if="currentEmbedUrl && needsSandbox"
-          :src="currentEmbedUrl"
-          width="100%"
-          height="100%"
-          frameborder="0"
-          allowfullscreen
-          webkitallowfullscreen
-          mozallowfullscreen
-          sandbox="allow-scripts allow-same-origin allow-popups allow-forms allow-presentation"
+          sandbox="allow-scripts allow-same-origin allow-presentation"
           allow="autoplay; fullscreen; picture-in-picture"
           referrerpolicy="origin"
           loading="lazy"
@@ -100,6 +85,32 @@
           <p>{{ error }}</p>
           <button @click="retryLoad" class="retry-btn">Try Another Source</button>
         </div>
+
+        <!-- Next Episode Overlay -->
+        <transition name="next-ep">
+          <div v-if="showNextEpisode && nextEpisodeInfo" class="next-episode-overlay">
+            <div class="next-episode-card">
+              <div class="next-episode-label">Next Episode</div>
+              <div class="next-episode-meta">
+                S{{ nextEpisodeInfo.season }} · E{{ nextEpisodeInfo.episode }}
+                <span v-if="nextEpisodeInfo.name"> — {{ nextEpisodeInfo.name }}</span>
+              </div>
+              <div class="next-episode-actions">
+                <button class="next-ep-btn next-ep-btn--primary" @click="playNextEpisode">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
+                  Play Now
+                  <span class="countdown-badge">{{ nextEpisodeCountdown }}s</span>
+                </button>
+                <button class="next-ep-btn next-ep-btn--secondary" @click="dismissNextEpisode">
+                  Dismiss
+                </button>
+              </div>
+              <div class="countdown-bar">
+                <div class="countdown-fill" :style="{ width: countdownPercent + '%' }"></div>
+              </div>
+            </div>
+          </div>
+        </transition>
       </div>
 
       <transition name="toast">
@@ -128,8 +139,13 @@ export default {
     season: { type: Number, default: 1 },
     episode: { type: Number, default: 1 },
     autoPlay: { type: Boolean, default: false },
+    // For next-episode: pass total episodes in current season and total seasons
+    totalEpisodes: { type: Number, default: null },
+    totalSeasons: { type: Number, default: null },
+    // Next episode name (optional, passed from parent)
+    nextEpisodeName: { type: String, default: null },
   },
-  emits: ['player-opened', 'player-closed', 'source-changed'],
+  emits: ['player-opened', 'player-closed', 'source-changed', 'next-episode'],
   setup(props, { emit }) {
     const router = useRouter()
     const showPlayer = ref(false)
@@ -146,18 +162,15 @@ export default {
     let dragStartX = 0
     let dragScrollLeft = 0
     let navigationGuard = null
-    const loading = ref(false)
-    const error = ref(null)
-    const selectedSource = ref(0)
-    const availableSources = ref([])
-    const showSourceInfo = ref(true)
-    const pillsContainer = ref(null)
-    const canScrollLeft = ref(false)
-    const canScrollRight = ref(false)
-    const isDragging = ref(false)
-    const wasDragging = ref(false)
-    let dragStartX = 0
-    let dragScrollLeft = 0
+
+    // Next episode state
+    const showNextEpisode = ref(false)
+    const nextEpisodeCountdown = ref(10)
+    const countdownPercent = ref(100)
+    let nextEpTimer = null
+    let nextEpInterval = null
+    // Timer to show the overlay after the player has been open a while
+    let endScreenTimer = null
 
     const isMobileDevice = computed(() =>
       /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)
@@ -170,10 +183,27 @@ export default {
     const currentSource = computed(() => availableSources.value[selectedSource.value] || null)
     const currentEmbedUrl = computed(() => currentSource.value?.url || null)
 
-    const needsSandbox = computed(() => {
-      const name = currentSource.value?.name?.toLowerCase() || ''
-      const unsandboxed = ['vidlink', 'nontongo', 'autoembed', 'embed.su', 'moviesapi', 'youtube']
-      return !(unsandboxed.some(s => name.includes(s)) || isMobileDevice.value)
+    const nextEpisodeInfo = computed(() => {
+      if (props.mediaType !== 'tv') return null
+      const nextEp = props.episode + 1
+      const nextSeason = props.season + 1
+      // Next episode in same season
+      if (props.totalEpisodes === null || nextEp <= props.totalEpisodes) {
+        return {
+          season: props.season,
+          episode: nextEp,
+          name: props.nextEpisodeName || null
+        }
+      }
+      // First episode of next season
+      if (props.totalSeasons === null || nextSeason <= props.totalSeasons) {
+        return {
+          season: nextSeason,
+          episode: 1,
+          name: null
+        }
+      }
+      return null
     })
 
     function getPlaySubtext() {
@@ -191,13 +221,67 @@ export default {
       loadEmbedSources()
       emit('player-opened')
       installNavigationGuard()
+      if (props.mediaType === 'tv' && nextEpisodeInfo.value) {
+        scheduleEndScreen()
+      }
     }
 
     function closePlayer() {
       showPlayer.value = false
       selectedSource.value = 0
+      dismissNextEpisode()
+      clearEndScreenTimer()
       emit('player-closed')
       removeNavigationGuard()
+    }
+
+    // Show the end screen after a generous delay (simulating near end of episode)
+    // In practice this fires after 20 minutes; parent can also emit a signal
+    function scheduleEndScreen() {
+      clearEndScreenTimer()
+      endScreenTimer = setTimeout(() => {
+        if (showPlayer.value && nextEpisodeInfo.value) {
+          triggerNextEpisodeOverlay()
+        }
+      }, 20 * 60 * 1000) // 20 minutes
+    }
+
+    function clearEndScreenTimer() {
+      if (endScreenTimer) {
+        clearTimeout(endScreenTimer)
+        endScreenTimer = null
+      }
+    }
+
+    function triggerNextEpisodeOverlay() {
+      showNextEpisode.value = true
+      nextEpisodeCountdown.value = 10
+      countdownPercent.value = 100
+      const total = 10
+      nextEpInterval = setInterval(() => {
+        nextEpisodeCountdown.value--
+        countdownPercent.value = (nextEpisodeCountdown.value / total) * 100
+        if (nextEpisodeCountdown.value <= 0) {
+          clearInterval(nextEpInterval)
+          playNextEpisode()
+        }
+      }, 1000)
+    }
+
+    function playNextEpisode() {
+      clearInterval(nextEpInterval)
+      showNextEpisode.value = false
+      if (nextEpisodeInfo.value) {
+        emit('next-episode', {
+          season: nextEpisodeInfo.value.season,
+          episode: nextEpisodeInfo.value.episode
+        })
+      }
+    }
+
+    function dismissNextEpisode() {
+      clearInterval(nextEpInterval)
+      showNextEpisode.value = false
     }
 
     function installNavigationGuard() {
@@ -300,21 +384,35 @@ export default {
       nextTick(() => updateScrollState())
     })
 
+    // Re-schedule end screen when episode changes
+    watch(() => [props.season, props.episode], () => {
+      dismissNextEpisode()
+      clearEndScreenTimer()
+      if (showPlayer.value && props.mediaType === 'tv' && nextEpisodeInfo.value) {
+        scheduleEndScreen()
+      }
+    })
+
     onMounted(() => {
       if (props.autoPlay) initializePlayer()
     })
 
     onUnmounted(() => {
       removeNavigationGuard()
+      dismissNextEpisode()
+      clearEndScreenTimer()
     })
 
     return {
       showPlayer, loading, error, selectedSource, availableSources,
       showSourceInfo, backdropUrl, currentSource, currentEmbedUrl,
-      needsSandbox, getPlaySubtext, getPlayerMeta, initializePlayer,
+      getPlaySubtext, getPlayerMeta, initializePlayer,
       closePlayer, handleIframeError, retryLoad,
       pillsContainer, canScrollLeft, canScrollRight, wasDragging,
-      updateScrollState, scrollPills, startDrag, onDrag, endDrag
+      updateScrollState, scrollPills, startDrag, onDrag, endDrag,
+      // next episode
+      showNextEpisode, nextEpisodeInfo, nextEpisodeCountdown, countdownPercent,
+      playNextEpisode, dismissNextEpisode, triggerNextEpisodeOverlay,
     }
   }
 }
@@ -610,6 +708,124 @@ export default {
   color: var(--bg-primary);
 }
 
+/* ── Next Episode Overlay ── */
+.next-episode-overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.75);
+  display: flex;
+  align-items: flex-end;
+  justify-content: flex-end;
+  padding: 28px;
+  z-index: 10;
+}
+
+.next-episode-card {
+  background: rgba(20, 20, 20, 0.95);
+  backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 12px;
+  padding: 20px 24px 0;
+  width: 320px;
+  overflow: hidden;
+}
+
+.next-episode-label {
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--text-secondary);
+  margin-bottom: 6px;
+}
+
+.next-episode-meta {
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-bottom: 18px;
+  line-height: 1.4;
+}
+
+.next-episode-actions {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 14px;
+}
+
+.next-ep-btn {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 9px 18px;
+  border-radius: var(--border-radius-full);
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  border: none;
+}
+
+.next-ep-btn--primary {
+  background: var(--text-primary);
+  color: var(--bg-primary);
+  flex: 1;
+  justify-content: center;
+}
+
+.next-ep-btn--primary:hover {
+  background: rgba(255, 255, 255, 0.85);
+}
+
+.next-ep-btn--secondary {
+  background: transparent;
+  color: var(--text-secondary);
+  border: 1px solid var(--border-color);
+}
+
+.next-ep-btn--secondary:hover {
+  color: var(--text-primary);
+  border-color: var(--border-hover);
+}
+
+.countdown-badge {
+  background: rgba(0, 0, 0, 0.25);
+  border-radius: 20px;
+  padding: 2px 7px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  margin-left: 2px;
+}
+
+.countdown-bar {
+  height: 2px;
+  background: rgba(255, 255, 255, 0.1);
+  margin: 0 -24px;
+}
+
+.countdown-fill {
+  height: 100%;
+  background: var(--text-primary);
+  transition: width 1s linear;
+}
+
+/* Next episode transition */
+.next-ep-enter-active {
+  transition: opacity 0.4s ease, transform 0.4s ease;
+}
+.next-ep-leave-active {
+  transition: opacity 0.2s ease, transform 0.2s ease;
+}
+.next-ep-enter-from {
+  opacity: 0;
+  transform: translateY(16px);
+}
+.next-ep-leave-to {
+  opacity: 0;
+  transform: translateY(8px);
+}
+
+/* ── Source toast ── */
 .source-toast {
   position: absolute;
   bottom: 16px;
@@ -665,6 +881,16 @@ export default {
   .play-button {
     width: 52px;
     height: 52px;
+  }
+
+  .next-episode-overlay {
+    align-items: flex-end;
+    justify-content: center;
+    padding: 16px;
+  }
+
+  .next-episode-card {
+    width: 100%;
   }
 }
 </style>

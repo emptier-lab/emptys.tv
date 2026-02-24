@@ -78,7 +78,7 @@ export default {
         const response = await tmdbService.getTrending('all', 'week')
         popularContent.value = response.results?.slice(0, 6) || []
       } catch (error) {
-        console.error('Failed to load popular content:', error)
+        // failed to load popular content
       }
     }
 
@@ -98,8 +98,6 @@ export default {
 
 <style scoped>
 .page-layout {
-  min-height: 100vh;
-  background: var(--bg-primary);
   padding-top: 100px;
 }
 

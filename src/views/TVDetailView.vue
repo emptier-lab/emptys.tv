@@ -1,5 +1,5 @@
 <template>
-  <div class="tv-detail-view page-layout">
+  <div class="tv-detail-view">
     <div v-if="tvShow" class="tv-content">
       <!-- Hero Section -->
       <div class="hero-section">
@@ -95,10 +95,13 @@
           :backdrop-path="tvShow.backdrop_path"
           :season="selectedSeason"
           :episode="selectedEpisode"
-          :seasons="tvShow.seasons"
+          :total-episodes="currentSeasonEpisodeCount"
+          :total-seasons="totalSeasonsCount"
+          :next-episode-name="nextEpisodeName"
           :auto-play="false"
           @player-closed="showPlayer = false"
           @episode-changed="handleEpisodeChange"
+          @next-episode="handleNextEpisode"
         />
       </div>
 
@@ -106,7 +109,7 @@
       <div v-if="tvShow.seasons?.length" class="page-container seasons-container">
         <div class="section-card full-width">
           <h2 class="section-title">Seasons & Episodes</h2>
-          
+
           <div class="season-selector-wrapper">
             <select v-model="selectedSeason" @change="loadSeasonDetails" class="custom-select">
               <option v-for="option in seasonOptions" :key="option.value" :value="option.value">
@@ -135,6 +138,7 @@
                     :alt="episode.name"
                     class="episode-image"
                   />
+                  <div v-else class="episode-image-placeholder"></div>
                   <div class="episode-overlay">
                     <div class="play-icon-circle">
                       <svg viewBox="0 0 24 24" class="icon play-icon"><path fill="currentColor" d="M8 5v14l11-7z"/></svg>
@@ -242,10 +246,10 @@
               </div>
 
               <div v-if="tvShow.production_companies?.length" class="info-item">
-                <strong>Production:</strong>
+                <strong>Studios:</strong>
                 <div class="production-companies">
-                  <span v-for="(company, index) in tvShow.production_companies" :key="company.id">
-                    {{ company.name }}<span v-if="index < tvShow.production_companies.length - 1">, </span>
+                  <span v-for="(company, index) in tvShow.production_companies.slice(0, 3)" :key="company.id">
+                    {{ company.name }}<span v-if="index < Math.min(tvShow.production_companies.length, 3) - 1">, </span>
                   </span>
                 </div>
               </div>
@@ -320,21 +324,10 @@ export default {
     const isFavorite = ref(false)
     const isInWatchlist = ref(false)
 
-    const creators = computed(() => {
-      return tvShow.value?.created_by || []
-    })
-
-    const cast = computed(() => {
-      return utilsService.getMainCast(tvShow.value?.credits, 12) || []
-    })
-
-    const similar = computed(() => {
-      return tvShow.value?.similar?.results?.slice(0, 12) || []
-    })
-
-    const trailerKey = computed(() => {
-      return utilsService.getTrailerKey(tvShow.value?.videos)
-    })
+    const creators = computed(() => tvShow.value?.created_by || [])
+    const cast = computed(() => utilsService.getMainCast(tvShow.value?.credits, 12) || [])
+    const similar = computed(() => tvShow.value?.similar?.results?.slice(0, 12) || [])
+    const trailerKey = computed(() => utilsService.getTrailerKey(tvShow.value?.videos))
 
     const seasonOptions = computed(() => {
       if (!tvShow.value?.seasons) return []
@@ -346,20 +339,34 @@ export default {
         }))
     })
 
+    const currentSeasonEpisodeCount = computed(() => {
+      return currentSeasonDetails.value?.episodes?.length || null
+    })
+
+    const totalSeasonsCount = computed(() => {
+      if (!tvShow.value?.seasons) return null
+      return tvShow.value.seasons.filter(s => s.season_number > 0).length
+    })
+
+    const nextEpisodeName = computed(() => {
+      if (!currentSeasonDetails.value?.episodes) return null
+      const next = currentSeasonDetails.value.episodes.find(
+        ep => ep.episode_number === selectedEpisode.value + 1
+      )
+      return next?.name || null
+    })
+
     async function loadTVShow() {
       loading.value = true
       error.value = null
-
       try {
         const tvId = route.params.id
         const response = await tmdbService.getTVDetails(tvId)
         tvShow.value = response
-
         if (tvShow.value.seasons?.length) {
           selectedSeason.value = tvShow.value.seasons.find(s => s.season_number > 0)?.season_number || 1
           await loadSeasonDetails()
         }
-
         checkFavoriteStatus()
         checkWatchlistStatus()
       } catch (err) {
@@ -371,28 +378,38 @@ export default {
 
     async function loadSeasonDetails() {
       if (!tvShow.value || !selectedSeason.value) return
-
       try {
         const response = await tmdbService.getSeasonDetails(tvShow.value.id, selectedSeason.value)
         currentSeasonDetails.value = response
       } catch (err) {
-        console.error('Failed to load season details:', err)
+        // season details unavailable
       }
     }
 
     function watchTVShow() {
       showPlayer.value = true
+      selectedEpisode.value = 1
+      window.scrollTo({ top: 0, behavior: 'smooth' })
     }
 
     function watchEpisode(season, episode) {
       selectedSeason.value = season
       selectedEpisode.value = episode
       showPlayer.value = true
+      window.scrollTo({ top: 0, behavior: 'smooth' })
     }
 
-    function handleEpisodeChange(data) {
-      selectedSeason.value = data.season
-      selectedEpisode.value = data.episode
+    function handleEpisodeChange({ season, episode }) {
+      selectedSeason.value = season
+      selectedEpisode.value = episode
+    }
+
+    function handleNextEpisode({ season, episode }) {
+      selectedSeason.value = season
+      selectedEpisode.value = episode
+      if (season !== selectedSeason.value) {
+        loadSeasonDetails()
+      }
     }
 
     function toggleFavorite() {
@@ -464,9 +481,7 @@ export default {
     }
 
     watch(() => route.params.id, (newId) => {
-      if (newId) {
-        loadTVShow()
-      }
+      if (newId) loadTVShow()
     })
 
     watch(selectedSeason, () => {
@@ -478,38 +493,16 @@ export default {
     })
 
     return {
-      tvShow,
-      currentSeasonDetails,
-      loading,
-      error,
-      showPlayer,
-      selectedSeason,
-      selectedEpisode,
-      isFavorite,
-      isInWatchlist,
-      creators,
-      cast,
-      similar,
-      trailerKey,
-      seasonOptions,
-      loadTVShow,
-      loadSeasonDetails,
-      watchTVShow,
-      watchEpisode,
-      handleEpisodeChange,
-      toggleFavorite,
-      toggleWatchlist,
-      goToTV,
-      goToPerson,
-      getPosterUrl,
-      getBackdropUrl,
-      getProfileUrl,
-      getStillUrl,
-      formatRating,
-      getRatingColor,
-      formatDate,
-      getYear,
-      truncateText
+      tvShow, currentSeasonDetails, loading, error, showPlayer,
+      selectedSeason, selectedEpisode, isFavorite, isInWatchlist,
+      creators, cast, similar, trailerKey, seasonOptions,
+      currentSeasonEpisodeCount, totalSeasonsCount, nextEpisodeName,
+      loadTVShow, loadSeasonDetails, watchTVShow, watchEpisode,
+      handleEpisodeChange, handleNextEpisode,
+      toggleFavorite, toggleWatchlist,
+      goToTV, goToPerson,
+      getPosterUrl, getBackdropUrl, getProfileUrl, getStillUrl,
+      formatRating, getRatingColor, formatDate, getYear, truncateText,
     }
   }
 }
@@ -521,9 +514,19 @@ export default {
   position: relative;
 }
 
+.page-container {
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: 0 clamp(1.5rem, 5vw, 4rem);
+}
+
+.player-container {
+  padding-bottom: 2rem;
+}
+
 .hero-section {
   position: relative;
-  min-height: 75vh;
+  min-height: 100vh;
   display: flex;
   align-items: flex-end;
   padding-bottom: 4rem;
@@ -893,7 +896,7 @@ export default {
 .trailer-container {
   position: relative;
   width: 100%;
-  padding-top: 56.25%; /* 16:9 Aspect Ratio */
+  padding-top: 56.25%;
   border-radius: var(--border-radius-sm);
   overflow: hidden;
   background: var(--bg-secondary);
@@ -958,20 +961,20 @@ export default {
     grid-template-columns: 1fr;
     gap: 2rem;
   }
-  
+
   .poster-card {
     max-width: 240px;
     margin: 0 auto;
   }
-  
+
   .tv-info {
     text-align: center;
   }
-  
+
   .tv-meta, .tv-actions {
     justify-content: center;
   }
-  
+
   .tv-overview {
     text-align: left;
   }

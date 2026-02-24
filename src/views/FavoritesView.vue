@@ -57,34 +57,20 @@ export default {
 
     function loadFavorites() {
       favorites.value = localStorageService.getFavorites()
-      console.log('Favorites loaded:', favorites.value.length)
     }
 
     function removeFavorite(item) {
-      if (item && item.id) {
-        localStorageService.removeFromFavorites(item.id, item.media_type)
-        loadFavorites() // Reload favorites after removal
-      }
-    }
-
-    // Watch for storage events
-    function handleStorageEvent() {
-      loadFavorites()
+      localStorageService.toggleFavorite(item)
+      loadFavorites() // Reload the list
     }
 
     onMounted(() => {
       loadFavorites()
-      // Add event listener for storage changes (works for both real storage events and our custom dispatched events)
-      window.addEventListener('storage', handleStorageEvent)
-    })
-
-    onBeforeUnmount(() => {
-      // Clean up event listener
-      window.removeEventListener('storage', handleStorageEvent)
     })
 
     return {
       favorites,
+      loadFavorites,
       removeFavorite
     }
   }
@@ -93,8 +79,6 @@ export default {
 
 <style scoped>
 .page-layout {
-  min-height: 100vh;
-  background: var(--bg-primary);
   padding-top: 100px;
 }
 

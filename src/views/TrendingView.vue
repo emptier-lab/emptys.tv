@@ -41,7 +41,7 @@
 </template>
 
 <script>
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, watch } from 'vue'
 import MediaCard from '@/components/common/MediaCard.vue'
 import { tmdbService } from '@/services/tmdb'
 
@@ -61,13 +61,17 @@ export default {
         const response = await tmdbService.getTrending('all', timeWindow.value)
         trendingContent.value = response.results || []
       } catch (error) {
-        console.error('Failed to load trending content:', error)
+        // failed to load trending
       } finally {
         loading.value = false
       }
     }
 
     onMounted(() => {
+      loadTrending()
+    })
+
+    watch(timeWindow, () => {
       loadTrending()
     })
 
@@ -83,8 +87,6 @@ export default {
 
 <style scoped>
 .page-layout {
-  min-height: 100vh;
-  background: var(--bg-primary);
   padding-top: 100px;
 }
 

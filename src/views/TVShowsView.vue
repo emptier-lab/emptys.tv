@@ -374,26 +374,18 @@ export default {
         totalPages.value = response.total_pages || 0
       } catch (err) {
         error.value = err.message || 'Failed to load TV shows'
-        console.error('Failed to load TV shows:', err)
       } finally {
         loading.value = false
       }
     }
 
     async function loadMoreShows() {
-      if (!hasMoreTVShows.value || loadingMore.value) return
-
-      const now = Date.now()
-      if (now - lastLoadTime.value < minLoadInterval) return
-      lastLoadTime.value = now
-
+      if (loadingMore.value || !hasMoreTVShows.value) return
       loadingMore.value = true
-      currentPage.value += 1
-
+      currentPage.value++
       try {
         const response = await fetchTVShows(currentPage.value)
-        tvShows.value.push(...(response.results || []))
-        totalPages.value = response.total_pages || totalPages.value
+        tvShows.value = [...tvShows.value, ...(response.results || [])]
       } catch (err) {
         console.error('Failed to load more TV shows:', err)
       } finally {
@@ -401,60 +393,27 @@ export default {
       }
     }
 
-    async function loadGenres() {
-      try {
-        const response = await tmdbService.getTVGenres()
-        tvGenres.value = response.genres || []
-      } catch (err) {
-        console.error('Failed to load genres:', err)
+    function toggleKeyword(keyword) {
+      if (selectedKeywords.value.includes(keyword)) {
+        selectedKeywords.value = selectedKeywords.value.filter(k => k !== keyword)
+      } else {
+        selectedKeywords.value.push(keyword)
       }
     }
 
-    // Add watchers for all filter values to trigger loadTVShows
-    const filtersToWatch = [
-      selectedCategory,
-      selectedGenre,
-      selectedYear,
-      selectedNetwork,
-      sortBy,
-      selectedAudience,
-      selectedTheme
-    ]
-
-    // Watch all filter values except keywords
-    filtersToWatch.forEach(filter => {
-      watch(filter, () => {
-        console.log('Filter changed, reloading TV shows')
-        loadTVShows()
-      })
-    })
-
-    // Special handling for keywords with debounce
-    watch(selectedKeywords, () => {
+    watch([selectedCategory, selectedGenre, selectedYear, selectedNetwork, sortBy, selectedAudience, selectedTheme, selectedKeywords], () => {
       if (autoApplyTimer.value) clearTimeout(autoApplyTimer.value)
       autoApplyTimer.value = setTimeout(() => {
         loadTVShows()
-      }, 300)
-    })
+      }, 500)
+    }, { deep: true })
 
-    function toggleKeyword(value) {
-      const index = selectedKeywords.value.indexOf(value)
-      if (index === -1) {
-        selectedKeywords.value = [...selectedKeywords.value, value]
-      } else {
-        selectedKeywords.value = selectedKeywords.value.filter(k => k !== value)
-      }
-    }
-
-    // LazyGrid handles scrolling automatically, so we don't need these scroll handlers
     onMounted(() => {
-      loadGenres()
       loadTVShows()
     })
 
     return {
       tvShows,
-      tvGenres,
       loading,
       loadingMore,
       error,
@@ -467,15 +426,14 @@ export default {
       selectedTheme,
       selectedKeywords,
       categories,
-      genres,
-      years,
-      networks,
       sortOptions,
+      networks,
       audienceTypes,
       themeTypes,
       keywordOptions,
+      genres,
+      years,
       hasMoreTVShows,
-      infiniteScrollEnabled,
       loadTVShows,
       loadMoreShows,
       toggleKeyword
@@ -486,8 +444,6 @@ export default {
 
 <style scoped>
 .page-layout {
-  min-height: 100vh;
-  background: var(--bg-primary);
   padding-top: 100px;
 }
 

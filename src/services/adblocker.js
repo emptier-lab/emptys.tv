@@ -224,14 +224,10 @@ class EnhancedAdBlocker {
     // Block redirects
     // this.setupRedirectBlocking(); // Disabled to prevent redirect loops
 
-    console.log(
-      "🛡️ Enhanced AdBlocker active - blocking ads, popups, and adult content",
-    );
   }
 
   setupNetworkBlocking() {
     // Only block obvious ad networks, not API calls
-    console.log("🛡️ Setting up selective network blocking");
 
     // Don't override fetch or XHR - too risky for app functionality
     // Instead, rely on CSS blocking and DOM manipulation
@@ -246,7 +242,6 @@ class EnhancedAdBlocker {
         window.adBlocker?.isKnownAdNetwork(child.src)
       ) {
         window.adBlocker.blockedCount++;
-        console.log("🚫 Blocked ad script:", child.src);
         return child;
       }
       return originalAppendChild.call(this, child);
@@ -281,7 +276,6 @@ class EnhancedAdBlocker {
     const originalOpen = window.open;
     window.open = (...args) => {
       this.popupCount++;
-      console.log("🚫 Blocked popup:", args[0]);
       return null;
     };
 
@@ -296,7 +290,6 @@ class EnhancedAdBlocker {
           e.preventDefault();
           e.stopPropagation();
           this.blockedCount++;
-          console.log("🚫 Blocked suspicious link:", href);
         }
       },
       true,
@@ -309,7 +302,6 @@ class EnhancedAdBlocker {
       if (timeSinceFocus < 1000) {
         window.focus();
         this.popupCount++;
-        console.log("🚫 Blocked focus popup trick");
       }
     });
 
@@ -342,10 +334,8 @@ class EnhancedAdBlocker {
         if (iframe.src && this.shouldBlockURL(iframe.src)) {
           iframe.src = "about:blank";
           this.blockedCount++;
-          console.log("🚫 Blocked suspicious iframe:", iframe.src);
         }
       } catch (e) {
-        console.warn("Could not protect iframe:", e);
       }
     };
 
@@ -381,7 +371,6 @@ class EnhancedAdBlocker {
       const url = args[2];
       if (url && this.shouldBlockURL(url)) {
         this.redirectCount++;
-        console.log("🚫 Blocked redirect:", url);
         return;
       }
       return originalReplace.apply(history, args);
@@ -392,7 +381,6 @@ class EnhancedAdBlocker {
       const url = args[2];
       if (url && this.shouldBlockURL(url)) {
         this.redirectCount++;
-        console.log("🚫 Blocked navigation:", url);
         return;
       }
       return originalPushState.apply(history, args);
@@ -492,6 +480,21 @@ class EnhancedAdBlocker {
     return false;
   }
 
+  isEssentialURL(url) {
+    if (!url) return false;
+    const urlLower = url.toLowerCase();
+    const essentials = [
+      'localhost',
+      '127.0.0.1',
+      'themoviedb.org',
+      'tmdb.org',
+      'youtube.com/embed',
+      'vimeo.com',
+      'empty.tv'
+    ];
+    return essentials.some(essential => urlLower.includes(essential));
+  }
+
   isKnownAdNetwork(url) {
     if (!url) return false;
 
@@ -556,9 +559,6 @@ class EnhancedAdBlocker {
 
   showStats() {
     const stats = this.getStats();
-    console.log(
-      `🛡️ AdBlocker Stats: ${stats.blocked} blocked, ${stats.popups} popups, ${stats.redirects} redirects`,
-    );
   }
 
   enable() {

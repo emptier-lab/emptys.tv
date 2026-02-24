@@ -211,148 +211,101 @@ export default {
           }
         })
       } catch (error) {
-        console.error('Search failed:', error)
-        searchResults.value = []
+        // search failed
       } finally {
         loading.value = false
       }
     }
 
     async function loadMoreResults() {
-      if (!hasMoreResults.value || loadingMore.value) return
-
-      // Prevent rapid successive calls
-      const now = Date.now()
-      if (now - lastLoadTime.value < minLoadInterval) {
-        console.log('Load more throttled - too soon since last load')
-        return
-      }
-      lastLoadTime.value = now
-
-      console.log('Loading more search results, page:', currentPage.value + 1)
+      if (loadingMore.value || !hasMoreResults.value) return
       loadingMore.value = true
-      currentPage.value += 1
-
+      currentPage.value++
       try {
         let response
         switch (searchType.value) {
-          case 'movie':
-            response = await tmdbService.searchMovies(lastSearchQuery.value, currentPage.value)
-            break
-          case 'tv':
-            response = await tmdbService.searchTV(lastSearchQuery.value, currentPage.value)
-            break
-          case 'person':
-            response = await tmdbService.searchPeople(lastSearchQuery.value, currentPage.value)
-            break
-          default:
-            response = await tmdbService.searchMulti(lastSearchQuery.value, currentPage.value)
+          case 'movie': response = await tmdbService.searchMovies(searchQuery.value, currentPage.value); break
+          case 'tv': response = await tmdbService.searchTV(searchQuery.value, currentPage.value); break
+          case 'person': response = await tmdbService.searchPeople(searchQuery.value, currentPage.value); break
+          default: response = await tmdbService.searchMulti(searchQuery.value, currentPage.value)
         }
-
-        searchResults.value.push(...(response.results || []))
-      } catch (error) {
-        console.error('Failed to load more results:', error)
+        searchResults.value = [...searchResults.value, ...(response.results || [])]
+      } catch (err) {
+        console.error('Failed to load more results:', err)
       } finally {
         loadingMore.value = false
-        console.log('Finished loading more search results, now showing:', searchResults.value.length)
-
-        // Let LazyGrid's Intersection Observer handle load more detection
       }
     }
 
-    // LazyGrid handles scrolling automatically, so we don't need these scroll handlers
+    function onSearchInput() {
+      // Basic debounce handling if really needed
+    }
 
     function clearSearch() {
       searchQuery.value = ''
       searchResults.value = []
       searched.value = false
-      lastSearchQuery.value = ''
       router.push({ query: {} })
     }
 
-    async function loadPopularContent() {
-      try {
-        const response = await tmdbService.getTrending('all', 'week')
-        popularContent.value = response.results?.slice(0, 12) || []
-      } catch (error) {
-        console.error('Failed to load popular content:', error)
-      }
-    }
-
-    function goToPerson(personId) {
-      router.push(`/person/${personId}`)
-    }
-
-    function onSearchInput() {
-      if (searchQuery.value && searchQuery.value.trim().length > 2) {
-        performSearch()
-      } else if (!searchQuery.value.trim()) {
-        clearSearch()
-      }
+    function goToPerson(id) {
+      router.push(`/person/${id}`)
     }
 
     function getProfileUrl(path) {
-      if (!path) {
-        return 'https://via.placeholder.com/185x278/2a2a2a/ffffff?text=No+Image'
-      }
-      return imageService.getProfileUrl(path, 'w342')
+      return imageService.getProfileUrl(path, 'w185')
     }
 
-    // Watch for search type changes
-    watch(searchType, () => {
-      if (searched.value && searchQuery.value.trim()) {
-        performSearch()
-      }
-    })
+    async function loadPopular() {
+      try {
+        const response = await tmdbService.getTrending('all', 'week')
+        popularContent.value = response.results?.slice(0, 10) || []
+      } catch (e) { }
+    }
 
-    // Watch for immediate search type changes
-    watch(searchType, () => {
-      if (searched.value && searchQuery.value.trim()) {
-        performSearch()
-      }
-    })
-
-    // Initialize from URL query params
     onMounted(() => {
-      if (route.query.q) {
-        searchQuery.value = route.query.q
-        searchType.value = route.query.type || 'multi'
+      const q = route.query.q
+      const type = route.query.type
+
+      if (q) {
+        searchQuery.value = q
+        if (type) searchType.value = type
         performSearch()
       } else {
-        loadPopularContent()
+        loadPopular()
       }
+    })
 
-      // Enable infinite scrolling
-      infiniteScrollEnabled.value = true
+    watch(searchType, () => {
+      if (searchQuery.value) {
+        performSearch()
+      }
     })
 
     return {
-    searchQuery,
-    searchType,
-    searchResults,
-    popularContent,
-    loading,
-    loadingMore,
-    searched,
-    lastSearchQuery,
-    totalResults,
-    hasMoreResults,
-    infiniteScrollEnabled,
-    performSearch,
-    loadMoreResults,
-    clearSearch,
-    goToPerson,
-    getProfileUrl,
-    onSearchInput
-  }
+      searchQuery,
+      searchType,
+      searchResults,
+      popularContent,
+      loading,
+      loadingMore,
+      searched,
+      lastSearchQuery,
+      hasMoreResults,
+      totalResults,
+      performSearch,
+      loadMoreResults,
+      onSearchInput,
+      clearSearch,
+      goToPerson,
+      getProfileUrl
+    }
   }
 }
 </script>
 
 <style scoped>
 .page-layout {
-  min-height: 100vh;
-  background: var(--bg-primary);
   padding-top: 100px;
 }
 

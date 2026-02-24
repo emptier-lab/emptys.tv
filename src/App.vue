@@ -1,5 +1,6 @@
 <template>
   <div id="app" class="app-container">
+
     <AppNavigation />
     <main class="main-content">
       <router-view />
@@ -17,6 +18,7 @@ export default {
   components: {
     AppNavigation,
     SideNotifications
+  },
   }
 }
 </script>
@@ -180,6 +182,8 @@ button {
   margin: 0 auto;
   padding: 0 clamp(1rem, 4vw, 3rem);
 }
+
+
 
 .page-layout {
   min-height: 100vh;

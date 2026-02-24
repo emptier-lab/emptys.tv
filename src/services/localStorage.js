@@ -17,28 +17,20 @@ export class LocalStorageService {
     try {
       const data = localStorage.getItem(this.favoriteKey);
       const favorites = data ? JSON.parse(data) : [];
-      console.log("getFavorites called, returning:", favorites.length, "items");
       return favorites;
     } catch (error) {
-      console.error("Error getting favorites:", error);
       return [];
     }
   }
 
   addToFavorites(item) {
     try {
-      console.log("addToFavorites called with item:", item);
 
       if (!item || !item.id) {
-        console.error(
-          "Invalid item to add to favorites - missing item or id:",
-          item,
-        );
         return false;
       }
 
       const favorites = this.getFavorites();
-      console.log("Current favorites count:", favorites.length);
 
       // Check if already exists
       const alreadyExists = favorites.some(
@@ -46,7 +38,6 @@ export class LocalStorageService {
       );
 
       if (alreadyExists) {
-        console.log("Item already in favorites:", item.id, item.media_type);
         return false; // Already in favorites
       }
 
@@ -60,30 +51,22 @@ export class LocalStorageService {
         added_date: new Date().toISOString(),
       };
 
-      console.log("Adding enriched item to favorites:", enrichedItem);
 
       // Add to favorites
       favorites.push(enrichedItem);
       localStorage.setItem(this.favoriteKey, JSON.stringify(favorites));
-      console.log(
-        "Favorites saved to localStorage, new count:",
-        favorites.length,
-      );
 
       // Dispatch a custom event to notify components
       window.dispatchEvent(new Event("storage"));
-      console.log("Storage event dispatched");
 
       return true;
     } catch (error) {
-      console.error("Error adding to favorites:", error);
       return false;
     }
   }
 
   removeFromFavorites(id, mediaType) {
     try {
-      console.log("removeFromFavorites called with:", id, mediaType);
 
       const favorites = this.getFavorites();
       const filteredFavorites = favorites.filter(
@@ -91,22 +74,16 @@ export class LocalStorageService {
       );
 
       if (filteredFavorites.length === favorites.length) {
-        console.log("Item wasn't in favorites to remove:", id, mediaType);
         return false; // Item wasn't in favorites
       }
 
       localStorage.setItem(this.favoriteKey, JSON.stringify(filteredFavorites));
-      console.log(
-        "Item removed from favorites, new count:",
-        filteredFavorites.length,
-      );
 
       // Dispatch a custom event to notify components
       window.dispatchEvent(new Event("storage"));
 
       return true;
     } catch (error) {
-      console.error("Error removing from favorites:", error);
       return false;
     }
   }
@@ -117,30 +94,23 @@ export class LocalStorageService {
       const isFav = favorites.some(
         (item) => item.id === id && item.media_type === mediaType,
       );
-      console.log("isFavorite check for", id, mediaType, "result:", isFav);
       return isFav;
     } catch (error) {
-      console.error("Error checking favorite status:", error);
       return false;
     }
   }
 
   toggleFavorite(item) {
-    console.log("toggleFavorite called with:", item);
 
     if (!item || !item.id) {
-      console.error("toggleFavorite: Invalid item", item);
       return false;
     }
 
     const mediaType = item.media_type || "movie";
-    console.log("toggleFavorite: Using media type:", mediaType);
 
     if (this.isFavorite(item.id, mediaType)) {
-      console.log("toggleFavorite: Removing from favorites");
       return this.removeFromFavorites(item.id, mediaType);
     } else {
-      console.log("toggleFavorite: Adding to favorites");
       // Ensure the item has media_type and required fields
       const itemToAdd = {
         ...item,
@@ -157,28 +127,20 @@ export class LocalStorageService {
     try {
       const data = localStorage.getItem(this.watchlistKey);
       const watchlist = data ? JSON.parse(data) : [];
-      console.log("getWatchlist called, returning:", watchlist.length, "items");
       return watchlist;
     } catch (error) {
-      console.error("Error getting watchlist:", error);
       return [];
     }
   }
 
   addToWatchlist(item, reminderDate = null) {
     try {
-      console.log("addToWatchlist called with item:", item);
 
       if (!item || !item.id) {
-        console.error(
-          "Invalid item to add to watchlist - missing item or id:",
-          item,
-        );
         return false;
       }
 
       const watchlist = this.getWatchlist();
-      console.log("Current watchlist count:", watchlist.length);
 
       // Check if already exists
       const alreadyExists = watchlist.some(
@@ -186,7 +148,6 @@ export class LocalStorageService {
       );
 
       if (alreadyExists) {
-        console.log("Item already in watchlist:", item.id, item.media_type);
         return false; // Already in watchlist
       }
 
@@ -215,22 +176,15 @@ export class LocalStorageService {
         notified: false,
       };
 
-      console.log("Adding enriched item to watchlist:", itemWithDate);
 
       watchlist.push(itemWithDate);
       localStorage.setItem(this.watchlistKey, JSON.stringify(watchlist));
-      console.log(
-        "Watchlist saved to localStorage, new count:",
-        watchlist.length,
-      );
 
       // Dispatch a custom event to notify components
       window.dispatchEvent(new Event("storage"));
-      console.log("Storage event dispatched");
 
       return true;
     } catch (error) {
-      console.error("Error adding to watchlist:", error);
       return false;
     }
   }
@@ -256,7 +210,6 @@ export class LocalStorageService {
 
       return true;
     } catch (error) {
-      console.error("Error removing from watchlist:", error);
       return false;
     }
   }
@@ -267,36 +220,23 @@ export class LocalStorageService {
       const isInList = watchlist.some(
         (item) => item.id === id && item.media_type === mediaType,
       );
-      console.log(
-        "isInWatchlist check for",
-        id,
-        mediaType,
-        "result:",
-        isInList,
-      );
       return isInList;
     } catch (error) {
-      console.error("Error checking watchlist status:", error);
       return false;
     }
   }
 
   toggleWatchlist(item) {
-    console.log("toggleWatchlist called with:", item);
 
     if (!item || !item.id) {
-      console.error("toggleWatchlist: Invalid item", item);
       return false;
     }
 
     const mediaType = item.media_type || "movie";
-    console.log("toggleWatchlist: Using media type:", mediaType);
 
     if (this.isInWatchlist(item.id, mediaType)) {
-      console.log("toggleWatchlist: Removing from watchlist");
       return this.removeFromWatchlist(item.id, mediaType);
     } else {
-      console.log("toggleWatchlist: Adding to watchlist");
       // Ensure the item has media_type and required fields
       const itemToAdd = {
         ...item,
@@ -314,7 +254,6 @@ export class LocalStorageService {
       const data = localStorage.getItem(this.recentlyWatchedKey);
       return data ? JSON.parse(data) : [];
     } catch (error) {
-      console.error("Error getting recently watched:", error);
       return [];
     }
   }
@@ -322,7 +261,6 @@ export class LocalStorageService {
   addToRecentlyWatched(item, season = null, episode = null) {
     try {
       if (!item || !item.id) {
-        console.error("Invalid item to add to recently watched");
         return false;
       }
 
@@ -360,7 +298,6 @@ export class LocalStorageService {
       );
       return true;
     } catch (error) {
-      console.error("Error adding to recently watched:", error);
       return false;
     }
   }
@@ -381,7 +318,6 @@ export class LocalStorageService {
 
       return reminders;
     } catch (error) {
-      console.error("Error getting watchlist reminders:", error);
       return [];
     }
   }
@@ -404,7 +340,6 @@ export class LocalStorageService {
 
       return true;
     } catch (error) {
-      console.error("Error marking item as notified:", error);
       return false;
     }
   }
@@ -431,7 +366,6 @@ export class LocalStorageService {
 
       return true;
     } catch (error) {
-      console.error("Error updating watch-by date:", error);
       return false;
     }
   }
@@ -466,7 +400,6 @@ export class LocalStorageService {
       );
       return notification;
     } catch (error) {
-      console.error("Error adding notification:", error);
       return null;
     }
   }
@@ -476,7 +409,6 @@ export class LocalStorageService {
     try {
       return JSON.parse(localStorage.getItem(this.notificationsKey) || "[]");
     } catch (error) {
-      console.error("Error getting notifications:", error);
       return [];
     }
   }
@@ -495,7 +427,6 @@ export class LocalStorageService {
       localStorage.setItem(this.notificationsKey, JSON.stringify(updated));
       return true;
     } catch (error) {
-      console.error("Error marking notification as read:", error);
       return false;
     }
   }
@@ -508,7 +439,6 @@ export class LocalStorageService {
       localStorage.removeItem(this.notificationsKey);
       return true;
     } catch (error) {
-      console.error("Error clearing local storage data:", error);
       return false;
     }
   }

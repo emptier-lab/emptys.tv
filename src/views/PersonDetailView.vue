@@ -244,40 +244,38 @@ export default {
           const externalResponse = await tmdbService.getPersonExternalIds(personId)
           externalIds.value = externalResponse
         } catch (err) {
-          console.warn('Failed to load external IDs:', err)
+          // external IDs unavailable
         }
-
       } catch (err) {
-        console.error('Failed to load person:', err)
-        error.value = err.message || 'Failed to load person details'
+        error.value = err.message || 'Failed to load person'
       } finally {
         loading.value = false
       }
     }
 
     function getProfileUrl(path) {
-      return imageService.getProfileUrl(path, 'w500')
+      if (!path) return ''
+      return imageService.getProfileUrl(path, 'h632')
     }
 
     function formatDate(dateString) {
-      return utilsService.formatDate(dateString)
+      if (!dateString) return ''
+      const options = { year: 'numeric', month: 'long', day: 'numeric' }
+      return new Date(dateString).toLocaleDateString(undefined, options)
     }
 
     function formatPopularity(popularity) {
-      if (popularity > 50) return 'Very Popular'
-      if (popularity > 20) return 'Popular'
-      if (popularity > 10) return 'Known'
-      return 'Emerging'
+      return popularity ? popularity.toFixed(1) : ''
     }
+
+    onMounted(() => {
+      loadPerson()
+    })
 
     watch(() => route.params.id, (newId) => {
       if (newId) {
         loadPerson()
       }
-    })
-
-    onMounted(() => {
-      loadPerson()
     })
 
     return {
@@ -298,8 +296,6 @@ export default {
 
 <style scoped>
 .page-layout {
-  min-height: 100vh;
-  background: var(--bg-primary);
   padding-top: 80px;
 }
 

@@ -95,77 +95,49 @@ export default {
 
     function loadWatchlist() {
       watchlist.value = localStorageService.getWatchlist()
-      console.log('Watchlist loaded:', watchlist.value.length)
     }
 
     function removeFromWatchlist(item) {
-      if (item && item.id) {
-        localStorageService.removeFromWatchlist(item.id, item.media_type)
-        loadWatchlist() // Reload watchlist after removal
-      }
+      localStorageService.toggleWatchlist(item)
+      loadWatchlist() // Reload the list
     }
 
-    function formatDate(dateString) {
-      if (!dateString) return 'No date set'
-
-      const date = new Date(dateString)
-      // Account for timezone offset to avoid previous day display issue
-      const userTimezoneOffset = date.getTimezoneOffset() * 60000
-      const localDate = new Date(date.getTime() + userTimezoneOffset)
-
-      return new Intl.DateTimeFormat('en-US', {
+    function formatDate(dateStr) {
+      if (!dateStr) return ''
+      return new Date(dateStr).toLocaleDateString(undefined, {
         month: 'short',
         day: 'numeric',
         year: 'numeric'
-      }).format(localDate)
+      })
     }
 
     function openDatePicker(item) {
       dateDialog.value.item = item
-      if (item.watchByDate) {
-        dateDialog.value.selectedDate = new Date(item.watchByDate).toISOString().substr(0, 10)
-      } else {
-        // Set default to 3 days from now
-        dateDialog.value.selectedDate = new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toISOString().substr(0, 10)
-      }
+      dateDialog.value.selectedDate = item.watchByDate 
+        ? new Date(item.watchByDate).toISOString().substr(0, 10) 
+        : new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toISOString().substr(0, 10)
       dateDialog.value.show = true
     }
 
     function setWatchByDate() {
-      if (dateDialog.value.item && dateDialog.value.selectedDate) {
-        const selectedDate = new Date(dateDialog.value.selectedDate)
-
-        // Update the watch-by date
-        localStorageService.updateWatchByDate(
-          dateDialog.value.item.id,
-          dateDialog.value.item.media_type,
-          selectedDate
-        )
-
-        // Reload watchlist to show updated date
-        loadWatchlist()
-
-        // Close dialog
-        dateDialog.value.show = false
-      }
-    }
-
-    function handleStorageEvent() {
+      if (!dateDialog.value.item) return
+      
+      const item = dateDialog.value.item
+      const newDate = new Date(dateDialog.value.selectedDate)
+      localStorageService.updateWatchByDate(item.id, item.media_type || 'movie', newDate)
+      
+      dateDialog.value.show = false
       loadWatchlist()
     }
 
     onMounted(() => {
       loadWatchlist()
-      window.addEventListener('storage', handleStorageEvent)
-    })
-
-    onBeforeUnmount(() => {
-      window.removeEventListener('storage', handleStorageEvent)
     })
 
     return {
       watchlist,
       dateDialog,
+      loadWatchlist,
       removeFromWatchlist,
       formatDate,
       openDatePicker,
@@ -177,8 +149,6 @@ export default {
 
 <style scoped>
 .page-layout {
-  min-height: 100vh;
-  background: var(--bg-primary);
   padding-top: 100px;
 }
 

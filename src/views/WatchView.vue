@@ -270,34 +270,7 @@ export default {
         const response = await tmdbService.getSeasonDetails(media.value.id, currentSeason.value)
         currentSeasonDetails.value = response
       } catch (err) {
-        console.error('Failed to load season details:', err)
-      }
-    }
 
-    function watchEpisode(season, episode) {
-      currentSeason.value = season
-      currentEpisode.value = episode
-
-      // Update URL
-      const newPath = `/watch/tv/${mediaId.value}/${season}/${episode}`
-      router.replace(newPath)
-    }
-
-    function handleEpisodeChange(data) {
-      watchEpisode(data.season, data.episode)
-    }
-
-    function goBack() {
-      router.back()
-    }
-
-    function toggleFavorite() {
-      if (media.value) {
-        const mediaItem = {
-          ...media.value,
-          media_type: mediaType.value
-        };
-        const result = localStorageService.toggleFavorite(mediaItem);
         isFavorite.value = localStorageService.isFavorite(mediaId.value, mediaType.value);
       }
     }

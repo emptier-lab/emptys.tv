@@ -373,9 +373,7 @@ export default {
         const response = await fetchMovies(currentPage.value)
         movies.value = response.results || []
         totalPages.value = response.total_pages || 0
-        console.log('Movies loaded:', movies.value.length, 'Total pages:', totalPages.value)
       } catch (err) {
-        console.error('Error loading movies:', err)
         error.value = err.message || 'Failed to load movies'
       } finally {
         loading.value = false
@@ -383,19 +381,12 @@ export default {
     }
 
     async function loadMoreMovies() {
-      if (!hasMoreMovies.value || loadingMore.value) return
-
-      const now = Date.now()
-      if (now - lastLoadTime.value < minLoadInterval) return
-      lastLoadTime.value = now
-
+      if (loadingMore.value || !hasMoreMovies.value) return
       loadingMore.value = true
-      currentPage.value += 1
-
+      currentPage.value++
       try {
         const response = await fetchMovies(currentPage.value)
-        movies.value.push(...(response.results || []))
-        totalPages.value = response.total_pages || totalPages.value
+        movies.value = [...movies.value, ...(response.results || [])]
       } catch (err) {
         console.error('Failed to load more movies:', err)
       } finally {
@@ -403,51 +394,22 @@ export default {
       }
     }
 
-    async function loadGenres() {
-      try {
-        const response = await tmdbService.getMovieGenres()
-        movieGenres.value = response.genres || []
-      } catch (err) {
-        console.error('Failed to load genres:', err)
+    function toggleKeyword(keyword) {
+      if (selectedKeywords.value.includes(keyword)) {
+        selectedKeywords.value = selectedKeywords.value.filter(k => k !== keyword)
+      } else {
+        selectedKeywords.value.push(keyword)
       }
     }
 
-    // Add watchers for all filter values to trigger loadMovies
-    // Watch all filters including network
-    watch(selectedCategory, () => loadMovies())
-    watch(selectedGenre, () => loadMovies())
-    watch(selectedYear, () => loadMovies())
-    watch(selectedNetwork, () => loadMovies())
-    watch(sortBy, () => loadMovies())
-    watch(selectedAudience, () => loadMovies())
-    watch(selectedTheme, () => loadMovies())
-
-    // Special handling for keywords with debounce
-    watch(selectedKeywords, () => {
+    watch([selectedCategory, selectedGenre, selectedYear, selectedNetwork, sortBy, selectedAudience, selectedTheme, selectedKeywords], () => {
       if (autoApplyTimer.value) clearTimeout(autoApplyTimer.value)
       autoApplyTimer.value = setTimeout(() => {
         loadMovies()
-      }, 300)
-    })
+      }, 500)
+    }, { deep: true })
 
-    function toggleKeyword(value) {
-      const index = selectedKeywords.value.indexOf(value)
-      if (index === -1) {
-        selectedKeywords.value = [...selectedKeywords.value, value]
-      } else {
-        selectedKeywords.value = selectedKeywords.value.filter(k => k !== value)
-      }
-    }
-
-    function loadNetworks() {
-      // Networks are static for now
-      console.log('Networks loaded')
-    }
-
-    // LazyGrid handles scrolling automatically, so we don't need these scroll handlers
     onMounted(() => {
-      loadGenres()
-      loadNetworks()
       loadMovies()
     })
 
@@ -465,15 +427,14 @@ export default {
       selectedTheme,
       selectedKeywords,
       categories,
-      genres,
-      years,
-      networks,
       sortOptions,
+      networks,
       audienceTypes,
       themeTypes,
       keywordOptions,
+      genres,
+      years,
       hasMoreMovies,
-      infiniteScrollEnabled,
       loadMovies,
       loadMoreMovies,
       toggleKeyword
@@ -484,8 +445,6 @@ export default {
 
 <style scoped>
 .page-layout {
-  min-height: 100vh;
-  background: var(--bg-primary);
   padding-top: 100px;
 }
 
