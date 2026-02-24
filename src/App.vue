@@ -18,7 +18,6 @@ export default {
   components: {
     AppNavigation,
     SideNotifications
-  },
   }
 }
 </script>
